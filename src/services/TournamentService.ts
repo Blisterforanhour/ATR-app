@@ -120,6 +120,8 @@ export class TournamentService {
     let newMatches: TournamentMatch[] = [];
     if (tournament.format === 'single_elimination') {
       newMatches = this.generateSingleEliminationBracket(tournament, players);
+    } else if (tournament.format === 'round_robin') {
+      newMatches = this.generateRoundRobinBracket(tournament, players);
     }
 
     // Save the new matches
@@ -203,6 +205,44 @@ export class TournamentService {
     return matches;
   }
 
+  private static generateRoundRobinBracket(tournament: Tournament, players: User[]): TournamentMatch[] {
+    const matches: TournamentMatch[] = [];
+    const numPlayers = players.length;
+    
+    console.log(`Generating Round Robin bracket for ${numPlayers} players`);
+
+    // Calculate total number of matches: n(n-1)/2
+    const totalMatches = (numPlayers * (numPlayers - 1)) / 2;
+    console.log(`Total matches to generate: ${totalMatches}`);
+
+    let matchNumber = 1;
+
+    // Generate all possible pairings
+    for (let i = 0; i < numPlayers; i++) {
+      for (let j = i + 1; j < numPlayers; j++) {
+        const player1 = players[i];
+        const player2 = players[j];
+
+        const match: TournamentMatch = {
+          id: this.generateId('match'),
+          tournamentId: tournament.id,
+          round: 1, // In Round Robin, all matches are considered "Round 1"
+          matchNumber: matchNumber++,
+          player1Id: player1.id,
+          player2Id: player2.id,
+          status: 'pending',
+          location: tournament.location,
+          umpireId: tournament.umpireId,
+        };
+
+        matches.push(match);
+      }
+    }
+
+    console.log(`Generated ${matches.length} Round Robin matches for tournament ${tournament.name}`);
+    return matches;
+  }
+
   // Match Management
   static getTournamentMatches(tournamentId: string): TournamentMatch[] {
     const matches = this.getAllTournamentMatches();
@@ -228,8 +268,10 @@ export class TournamentService {
     matches[matchIndex] = match;
     localStorage.setItem(this.TOURNAMENT_MATCHES_KEY, JSON.stringify(matches));
 
-    // Advance winner to next round
-    this.advanceWinner(match);
+    // For single elimination, advance winner to next round
+    if (this.getTournamentById(match.tournamentId)?.format === 'single_elimination') {
+      this.advanceWinner(match);
+    }
 
     // Check if tournament is complete
     this.checkTournamentCompletion(match.tournamentId);
@@ -273,13 +315,138 @@ export class TournamentService {
     if (!tournament) return;
 
     const matches = this.getTournamentMatches(tournamentId);
-    const finalMatch = matches.find(m => m.round === Math.max(...matches.map(m => m.round)));
-
-    if (finalMatch && finalMatch.status === 'completed' && finalMatch.winnerId) {
-      tournament.status = 'completed';
-      tournament.winnerId = finalMatch.winnerId;
-      this.updateTournament(tournament);
+    
+    if (tournament.format === 'single_elimination') {
+      // For single elimination, check if final match is completed
+      const finalMatch = matches.find(m => m.round === Math.max(...matches.map(m => m.round)));
+      
+      if (finalMatch && finalMatch.status === 'completed' && finalMatch.winnerId) {
+        tournament.status = 'completed';
+        tournament.winnerId = finalMatch.winnerId;
+        this.updateTournament(tournament);
+      }
+    } else if (tournament.format === 'round_robin') {
+      // For round robin, check if all matches are completed
+      const allMatchesCompleted = matches.every(m => m.status === 'completed');
+      
+      if (allMatchesCompleted && matches.length > 0) {
+        // Determine winner based on wins/points
+        const winnerId = this.calculateRoundRobinWinner(tournamentId);
+        tournament.status = 'completed';
+        tournament.winnerId = winnerId;
+        this.updateTournament(tournament);
+      }
     }
+  }
+
+  private static calculateRoundRobinWinner(tournamentId: string): string | undefined {
+    const matches = this.getTournamentMatches(tournamentId);
+    const participants = this.getTournamentParticipants(tournamentId);
+    
+    // Calculate wins for each player
+    const playerStats: { [playerId: string]: { wins: number, matches: number } } = {};
+    
+    // Initialize stats for all participants
+    participants.forEach(p => {
+      playerStats[p.playerId] = { wins: 0, matches: 0 };
+    });
+    
+    // Count wins from completed matches
+    matches.forEach(match => {
+      if (match.status === 'completed' && match.winnerId) {
+        if (match.player1Id && playerStats[match.player1Id]) {
+          playerStats[match.player1Id].matches++;
+          if (match.winnerId === match.player1Id) {
+            playerStats[match.player1Id].wins++;
+          }
+        }
+        
+        if (match.player2Id && playerStats[match.player2Id]) {
+          playerStats[match.player2Id].matches++;
+          if (match.winnerId === match.player2Id) {
+            playerStats[match.player2Id].wins++;
+          }
+        }
+      }
+    });
+    
+    // Find player with most wins
+    let maxWins = -1;
+    let winnerId: string | undefined;
+    
+    Object.entries(playerStats).forEach(([playerId, stats]) => {
+      if (stats.wins > maxWins) {
+        maxWins = stats.wins;
+        winnerId = playerId;
+      }
+    });
+    
+    return winnerId;
+  }
+
+  // Round Robin specific methods
+  static getRoundRobinStandings(tournamentId: string): Array<{
+    playerId: string;
+    player: User | null;
+    wins: number;
+    losses: number;
+    matchesPlayed: number;
+    winPercentage: number;
+    position: number;
+  }> {
+    const matches = this.getTournamentMatches(tournamentId);
+    const participants = this.getTournamentParticipants(tournamentId);
+    
+    // Calculate stats for each player
+    const playerStats: { [playerId: string]: { wins: number, losses: number, matchesPlayed: number } } = {};
+    
+    // Initialize stats
+    participants.forEach(p => {
+      playerStats[p.playerId] = { wins: 0, losses: 0, matchesPlayed: 0 };
+    });
+    
+    // Count results from completed matches
+    matches.forEach(match => {
+      if (match.status === 'completed' && match.winnerId && match.player1Id && match.player2Id) {
+        const loserId = match.winnerId === match.player1Id ? match.player2Id : match.player1Id;
+        
+        if (playerStats[match.winnerId]) {
+          playerStats[match.winnerId].wins++;
+          playerStats[match.winnerId].matchesPlayed++;
+        }
+        
+        if (playerStats[loserId]) {
+          playerStats[loserId].losses++;
+          playerStats[loserId].matchesPlayed++;
+        }
+      }
+    });
+    
+    // Create standings array
+    const standings = Object.entries(playerStats).map(([playerId, stats]) => ({
+      playerId,
+      player: UserService.getPlayerById(playerId),
+      wins: stats.wins,
+      losses: stats.losses,
+      matchesPlayed: stats.matchesPlayed,
+      winPercentage: stats.matchesPlayed > 0 ? (stats.wins / stats.matchesPlayed) * 100 : 0,
+      position: 0 // Will be set after sorting
+    }));
+    
+    // Sort by wins (descending), then by win percentage (descending)
+    standings.sort((a, b) => {
+      if (a.wins !== b.wins) {
+        return b.wins - a.wins;
+      }
+      return b.winPercentage - a.winPercentage;
+    });
+    
+    // Set positions
+    standings.forEach((standing, index) => {
+      standing.position = index + 1;
+    });
+    
+    return standings;
   }
 
   // Utility Methods
@@ -331,7 +498,7 @@ export class TournamentService {
     const tournament2Start = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000); // 5 days from now
     const tournament2End = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
 
-    // Tournament 3: Ready to Start (Registration Closed)
+    // Tournament 3: Ready to Start (Registration Closed) - Round Robin
     const tournament3RegDeadline = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000); // 1 day ago
     const tournament3Start = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000); // Tomorrow
     const tournament3End = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days from now
@@ -341,7 +508,7 @@ export class TournamentService {
     const tournament4Start = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000); // 2 days ago
     const tournament4End = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000); // 2 days from now
 
-    // Tournament 5: Recently Completed
+    // Tournament 5: Recently Completed - Round Robin
     const tournament5RegDeadline = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000); // 10 days ago
     const tournament5Start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
     const tournament5End = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000); // 3 days ago
@@ -350,6 +517,11 @@ export class TournamentService {
     const tournament6RegDeadline = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 2 weeks from now
     const tournament6Start = new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000); // 3 weeks from now
     const tournament6End = new Date(now.getTime() + 25 * 24 * 60 * 60 * 1000); // 25 days from now
+
+    // Tournament 7: Round Robin Open Registration
+    const tournament7RegDeadline = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000); // 10 days from now
+    const tournament7Start = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 2 weeks from now
+    const tournament7End = new Date(now.getTime() + 16 * 24 * 60 * 60 * 1000); // 16 days from now
 
     const mockTournaments: Tournament[] = [
       {
@@ -384,13 +556,13 @@ export class TournamentService {
       },
       {
         id: 'tournament_3',
-        name: 'Beginner\'s Breakthrough',
-        description: 'Perfect tournament for new players to get their first competitive experience. Supportive environment with coaching tips and friendly competition.',
+        name: 'Round Robin Showcase',
+        description: 'Perfect tournament for players who want to play multiple matches! Everyone plays everyone in this comprehensive round robin format. Great for skill development and fair competition.',
         organizerId: 'mock_2',
         registrationDeadline: tournament3RegDeadline.toISOString(),
         startDate: tournament3Start.toISOString(),
         endDate: tournament3End.toISOString(),
-        format: 'single_elimination',
+        format: 'round_robin',
         location: 'Community Tennis Courts, Sandton',
         maxParticipants: 8,
         umpireId: 'mock_4',
@@ -414,15 +586,15 @@ export class TournamentService {
       },
       {
         id: 'tournament_5',
-        name: 'Spring Invitational',
-        description: 'Completed tournament that showcased amazing talent. Congratulations to all participants for an incredible display of tennis skills and sportsmanship.',
+        name: 'Spring Round Robin Classic',
+        description: 'Completed round robin tournament that showcased amazing talent. Every player got to compete against all others, creating fair and comprehensive competition.',
         organizerId: 'mock_4',
         registrationDeadline: tournament5RegDeadline.toISOString(),
         startDate: tournament5Start.toISOString(),
         endDate: tournament5End.toISOString(),
-        format: 'single_elimination',
+        format: 'round_robin',
         location: 'Spring Valley Tennis Club',
-        maxParticipants: 16,
+        maxParticipants: 6,
         umpireId: 'mock_1',
         status: 'completed',
         winnerId: 'mock_1', // Alex Quantum won
@@ -442,6 +614,21 @@ export class TournamentService {
         umpireId: 'mock_4',
         status: 'registration_open',
         createdAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 'tournament_7',
+        name: 'All-Play-All Championship',
+        description: 'Experience the fairest format in tennis! Round Robin ensures every player gets maximum court time and the chance to play against all opponents. Perfect for skill development and networking.',
+        organizerId: 'mock_3',
+        registrationDeadline: tournament7RegDeadline.toISOString(),
+        startDate: tournament7Start.toISOString(),
+        endDate: tournament7End.toISOString(),
+        format: 'round_robin',
+        location: 'Johannesburg Tennis Center',
+        maxParticipants: 10,
+        umpireId: 'mock_2',
+        status: 'registration_open',
+        createdAt: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       }
     ];
 
@@ -476,7 +663,7 @@ export class TournamentService {
         registeredAt: new Date(now.getTime() - (3 - i * 0.1) * 24 * 60 * 60 * 1000).toISOString()
       })),
 
-      // Tournament 3 participants (Beginner's) - Full 8/8
+      // Tournament 3 participants (Round Robin Showcase) - Full 8/8
       { id: 'part_3_1', tournamentId: 'tournament_3', playerId: 'mock_3', registeredAt: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString(), seed: 1 },
       { id: 'part_3_2', tournamentId: 'tournament_3', playerId: 'mock_6', registeredAt: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString(), seed: 2 },
       { id: 'part_3_3', tournamentId: 'tournament_3', playerId: 'mock_7', registeredAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), seed: 3 },
@@ -495,14 +682,13 @@ export class TournamentService {
         seed: i + 1
       })),
 
-      // Tournament 5 participants (Completed Spring Invitational) - 16/16
-      ...Array.from({ length: 16 }, (_, i) => ({
-        id: `part_5_${i + 1}`,
-        tournamentId: 'tournament_5',
-        playerId: `mock_${(i % 12) + 1}`,
-        registeredAt: new Date(now.getTime() - (18 - i * 0.3) * 24 * 60 * 60 * 1000).toISOString(),
-        seed: i + 1
-      })),
+      // Tournament 5 participants (Completed Round Robin) - 6/6
+      { id: 'part_5_1', tournamentId: 'tournament_5', playerId: 'mock_1', registeredAt: new Date(now.getTime() - 18 * 24 * 60 * 60 * 1000).toISOString(), seed: 1 },
+      { id: 'part_5_2', tournamentId: 'tournament_5', playerId: 'mock_2', registeredAt: new Date(now.getTime() - 17 * 24 * 60 * 60 * 1000).toISOString(), seed: 2 },
+      { id: 'part_5_3', tournamentId: 'tournament_5', playerId: 'mock_4', registeredAt: new Date(now.getTime() - 16 * 24 * 60 * 60 * 1000).toISOString(), seed: 3 },
+      { id: 'part_5_4', tournamentId: 'tournament_5', playerId: 'mock_6', registeredAt: new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000).toISOString(), seed: 4 },
+      { id: 'part_5_5', tournamentId: 'tournament_5', playerId: 'mock_8', registeredAt: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString(), seed: 5 },
+      { id: 'part_5_6', tournamentId: 'tournament_5', playerId: 'mock_10', registeredAt: new Date(now.getTime() - 13 * 24 * 60 * 60 * 1000).toISOString(), seed: 6 },
 
       // Tournament 6 participants (Grand Slam Qualifier) - 45/64 spots filled
       ...Array.from({ length: 45 }, (_, i) => ({
@@ -510,7 +696,15 @@ export class TournamentService {
         tournamentId: 'tournament_6',
         playerId: `mock_${(i % 12) + 1}`,
         registeredAt: new Date(now.getTime() - (2 - i * 0.05) * 24 * 60 * 60 * 1000).toISOString()
-      }))
+      })),
+
+      // Tournament 7 participants (Round Robin Open) - 6/10 spots filled
+      { id: 'part_7_1', tournamentId: 'tournament_7', playerId: 'mock_2', registeredAt: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_7_2', tournamentId: 'tournament_7', playerId: 'mock_5', registeredAt: new Date(now.getTime() - 20 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_7_3', tournamentId: 'tournament_7', playerId: 'mock_7', registeredAt: new Date(now.getTime() - 18 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_7_4', tournamentId: 'tournament_7', playerId: 'mock_9', registeredAt: new Date(now.getTime() - 15 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_7_5', tournamentId: 'tournament_7', playerId: 'mock_11', registeredAt: new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_7_6', tournamentId: 'tournament_7', playerId: 'mock_12', registeredAt: new Date(now.getTime() - 8 * 60 * 60 * 1000).toISOString() }
     ];
 
     localStorage.setItem(this.PARTICIPANTS_KEY, JSON.stringify(mockParticipants));
@@ -632,22 +826,122 @@ export class TournamentService {
         umpireId: 'mock_2'
       })),
 
-      // Tournament 5 (Completed Spring Invitational) - All matches completed
-      // This would be a full bracket of completed matches showing the tournament progression
+      // Tournament 5 (Completed Round Robin) - All 15 matches completed (6 players = 15 matches)
+      // Round Robin matches for 6 players: mock_1, mock_2, mock_4, mock_6, mock_8, mock_10
       {
-        id: 'match_5_final',
+        id: 'match_5_rr_1',
         tournamentId: 'tournament_5',
-        round: 4,
+        round: 1,
         matchNumber: 1,
         player1Id: 'mock_1',
-        player2Id: 'mock_4',
+        player2Id: 'mock_2',
         winnerId: 'mock_1',
-        score: '6-4, 3-6, 6-2',
+        score: '6-4, 6-2',
         status: 'completed',
         location: 'Spring Valley Tennis Club',
         umpireId: 'mock_1',
-        scheduledDate: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
-      }
+        scheduledDate: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 'match_5_rr_2',
+        tournamentId: 'tournament_5',
+        round: 1,
+        matchNumber: 2,
+        player1Id: 'mock_1',
+        player2Id: 'mock_4',
+        winnerId: 'mock_1',
+        score: '7-5, 6-3',
+        status: 'completed',
+        location: 'Spring Valley Tennis Club',
+        umpireId: 'mock_1',
+        scheduledDate: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 'match_5_rr_3',
+        tournamentId: 'tournament_5',
+        round: 1,
+        matchNumber: 3,
+        player1Id: 'mock_1',
+        player2Id: 'mock_6',
+        winnerId: 'mock_1',
+        score: '6-1, 6-4',
+        status: 'completed',
+        location: 'Spring Valley Tennis Club',
+        umpireId: 'mock_1',
+        scheduledDate: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 'match_5_rr_4',
+        tournamentId: 'tournament_5',
+        round: 1,
+        matchNumber: 4,
+        player1Id: 'mock_1',
+        player2Id: 'mock_8',
+        winnerId: 'mock_1',
+        score: '6-3, 7-5',
+        status: 'completed',
+        location: 'Spring Valley Tennis Club',
+        umpireId: 'mock_1',
+        scheduledDate: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 'match_5_rr_5',
+        tournamentId: 'tournament_5',
+        round: 1,
+        matchNumber: 5,
+        player1Id: 'mock_1',
+        player2Id: 'mock_10',
+        winnerId: 'mock_1',
+        score: '6-2, 6-1',
+        status: 'completed',
+        location: 'Spring Valley Tennis Club',
+        umpireId: 'mock_1',
+        scheduledDate: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      // More Round Robin matches...
+      {
+        id: 'match_5_rr_6',
+        tournamentId: 'tournament_5',
+        round: 1,
+        matchNumber: 6,
+        player1Id: 'mock_2',
+        player2Id: 'mock_4',
+        winnerId: 'mock_2',
+        score: '6-4, 3-6, 6-4',
+        status: 'completed',
+        location: 'Spring Valley Tennis Club',
+        umpireId: 'mock_1',
+        scheduledDate: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 'match_5_rr_7',
+        tournamentId: 'tournament_5',
+        round: 1,
+        matchNumber: 7,
+        player1Id: 'mock_2',
+        player2Id: 'mock_6',
+        winnerId: 'mock_2',
+        score: '7-6, 6-4',
+        status: 'completed',
+        location: 'Spring Valley Tennis Club',
+        umpireId: 'mock_1',
+        scheduledDate: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      // Continue with remaining matches to complete the round robin...
+      ...Array.from({ length: 8 }, (_, i) => ({
+        id: `match_5_rr_${i + 8}`,
+        tournamentId: 'tournament_5',
+        round: 1,
+        matchNumber: i + 8,
+        player1Id: i < 4 ? 'mock_2' : i < 6 ? 'mock_4' : i < 7 ? 'mock_6' : 'mock_8',
+        player2Id: i < 2 ? 'mock_8' : i < 4 ? 'mock_10' : i < 5 ? 'mock_6' : i < 6 ? 'mock_8' : i < 7 ? 'mock_8' : 'mock_10',
+        winnerId: i % 2 === 0 ? (i < 4 ? 'mock_2' : i < 6 ? 'mock_4' : i < 7 ? 'mock_6' : 'mock_8') : (i < 2 ? 'mock_8' : i < 4 ? 'mock_10' : i < 5 ? 'mock_6' : i < 6 ? 'mock_8' : i < 7 ? 'mock_8' : 'mock_10'),
+        score: '6-4, 6-3',
+        status: 'completed' as const,
+        location: 'Spring Valley Tennis Club',
+        umpireId: 'mock_1',
+        scheduledDate: new Date(now.getTime() - (4 - i * 0.2) * 24 * 60 * 60 * 1000).toISOString()
+      }))
     ];
 
     localStorage.setItem(this.TOURNAMENT_MATCHES_KEY, JSON.stringify(mockMatches));

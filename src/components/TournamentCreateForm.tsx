@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar, MapPin, Users, Trophy, User, Award } from 'lucide-react';
+import { X, Calendar, MapPin, Users, Trophy, User, Award, RotateCcw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { TournamentService } from '../services/TournamentService';
 import { UserService } from '../services/UserService';
@@ -39,7 +39,16 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
       label: 'Single Elimination',
       description: 'Traditional knockout format - lose once and you\'re out',
       available: true,
-      icon: Trophy
+      icon: Trophy,
+      details: 'Fast-paced tournament where players are eliminated after one loss. Perfect for quick competitions with clear winners.'
+    },
+    {
+      value: 'round_robin',
+      label: 'Round Robin',
+      description: 'Everyone plays everyone - fair and comprehensive',
+      available: true,
+      icon: RotateCcw,
+      details: 'Every player competes against all other players. Most fair format ensuring maximum court time for all participants.'
     },
     {
       value: 'double_elimination',
@@ -47,15 +56,8 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
       description: 'Two-loss elimination format - more forgiving for players',
       available: false,
       comingSoon: true,
-      icon: Award
-    },
-    {
-      value: 'round_robin',
-      label: 'Round Robin',
-      description: 'Everyone plays everyone - fair and comprehensive',
-      available: false,
-      comingSoon: true,
-      icon: Users
+      icon: Award,
+      details: 'Players must lose twice to be eliminated. Provides second chances while maintaining competitive structure.'
     }
   ] as const;
 
@@ -124,13 +126,23 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
       newErrors.umpireId = 'Umpire selection is required';
     }
 
-    if (formData.maxParticipants < 4 || formData.maxParticipants > 128) {
-      newErrors.maxParticipants = 'Participants must be between 4 and 128';
+    if (formData.maxParticipants < 3) {
+      newErrors.maxParticipants = 'Minimum 3 participants required';
     }
 
-    // Check if maxParticipants is a power of 2 for elimination formats
-    if (formData.format !== 'round_robin' && !isPowerOfTwo(formData.maxParticipants)) {
-      newErrors.maxParticipants = 'For elimination formats, participants must be a power of 2 (4, 8, 16, 32, 64, 128)';
+    if (formData.maxParticipants > 128) {
+      newErrors.maxParticipants = 'Maximum 128 participants allowed';
+    }
+
+    // Format-specific validation
+    if (formData.format === 'single_elimination') {
+      if (!isPowerOfTwo(formData.maxParticipants)) {
+        newErrors.maxParticipants = 'For single elimination, participants must be a power of 2 (4, 8, 16, 32, 64, 128)';
+      }
+    } else if (formData.format === 'round_robin') {
+      if (formData.maxParticipants > 20) {
+        newErrors.maxParticipants = 'Round Robin tournaments are limited to 20 participants for practical scheduling';
+      }
     }
 
     setErrors(newErrors);
@@ -165,6 +177,32 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
   const formatDateTime = (date: Date | null) => {
     if (!date) return 'Not selected';
     return date.toLocaleString();
+  };
+
+  const getParticipantOptions = () => {
+    if (formData.format === 'single_elimination') {
+      return [4, 8, 16, 32, 64, 128];
+    } else if (formData.format === 'round_robin') {
+      return Array.from({ length: 18 }, (_, i) => i + 3); // 3 to 20 participants
+    }
+    return [4, 8, 16, 32, 64, 128]; // Default
+  };
+
+  const getFormatInfo = () => {
+    const format = tournamentFormats.find(f => f.value === formData.format);
+    if (!format) return null;
+
+    let additionalInfo = '';
+    if (formData.format === 'round_robin' && formData.maxParticipants > 0) {
+      const totalMatches = (formData.maxParticipants * (formData.maxParticipants - 1)) / 2;
+      additionalInfo = `Total matches: ${totalMatches}`;
+    } else if (formData.format === 'single_elimination' && formData.maxParticipants > 0) {
+      const totalMatches = formData.maxParticipants - 1;
+      const rounds = Math.ceil(Math.log2(formData.maxParticipants));
+      additionalInfo = `${rounds} rounds, ${totalMatches} total matches`;
+    }
+
+    return { ...format, additionalInfo };
   };
 
   return (
@@ -276,18 +314,19 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
               <div className="format-options-grid">
                 {tournamentFormats.map((format) => {
                   const Icon = format.icon;
+                  const isSelected = formData.format === format.value;
                   return (
                     <label
                       key={format.value}
                       className={`format-option ${
-                        formData.format === format.value ? 'selected' : ''
+                        isSelected ? 'selected' : ''
                       } ${!format.available ? 'disabled' : ''}`}
                     >
                       <input
                         type="radio"
                         name="format"
                         value={format.value}
-                        checked={formData.format === format.value}
+                        checked={isSelected}
                         onChange={(e) => format.available && handleInputChange('format', e.target.value)}
                         disabled={!format.available}
                         className="format-radio"
@@ -302,6 +341,7 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
                           )}
                         </div>
                         <p className="format-description">{format.description}</p>
+                        <p className="format-details">{format.details}</p>
                       </div>
                       
                       {!format.available && (
@@ -313,6 +353,23 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
                   );
                 })}
               </div>
+              
+              {/* Format Information */}
+              {(() => {
+                const formatInfo = getFormatInfo();
+                return formatInfo && (
+                  <div className="format-info-display">
+                    <div className="format-info-header">
+                      <formatInfo.icon size={16} />
+                      <span>{formatInfo.label} Details</span>
+                    </div>
+                    <p className="format-info-text">{formatInfo.details}</p>
+                    {formatInfo.additionalInfo && (
+                      <p className="format-info-additional">{formatInfo.additionalInfo}</p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Participants */}
@@ -328,12 +385,14 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
                 className="form-select"
                 required
               >
-                <option value={4}>4 Players</option>
-                <option value={8}>8 Players</option>
-                <option value={16}>16 Players</option>
-                <option value={32}>32 Players</option>
-                <option value={64}>64 Players</option>
-                <option value={128}>128 Players</option>
+                {getParticipantOptions().map(num => (
+                  <option key={num} value={num}>
+                    {num} Players
+                    {formData.format === 'round_robin' && num > 0 && 
+                      ` (${(num * (num - 1)) / 2} matches)`
+                    }
+                  </option>
+                ))}
               </select>
               {errors.maxParticipants && <p className="text-error-pink text-sm mt-1">{errors.maxParticipants}</p>}
             </div>

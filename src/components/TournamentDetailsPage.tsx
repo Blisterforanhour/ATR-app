@@ -11,7 +11,9 @@ import {
   Award,
   CheckCircle,
   AlertTriangle,
-  Play
+  Play,
+  BarChart3,
+  RotateCcw
 } from 'lucide-react';
 import { Tournament, TournamentParticipant, TournamentMatch } from '../types';
 import { TournamentService } from '../services/TournamentService';
@@ -32,7 +34,16 @@ const TournamentDetailsPage: React.FC<TournamentDetailsPageProps> = ({
   const { user } = useAuth();
   const [participants, setParticipants] = useState<TournamentParticipant[]>([]);
   const [matches, setMatches] = useState<TournamentMatch[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'participants' | 'bracket'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'participants' | 'bracket' | 'standings'>('overview');
+  const [standings, setStandings] = useState<Array<{
+    playerId: string;
+    player: any;
+    wins: number;
+    losses: number;
+    matchesPlayed: number;
+    winPercentage: number;
+    position: number;
+  }>>([]);
 
   useEffect(() => {
     loadTournamentData();
@@ -44,6 +55,12 @@ const TournamentDetailsPage: React.FC<TournamentDetailsPageProps> = ({
     
     setParticipants(tournamentParticipants);
     setMatches(tournamentMatches);
+
+    // Load standings for round robin tournaments
+    if (tournament.format === 'round_robin') {
+      const roundRobinStandings = TournamentService.getRoundRobinStandings(tournament.id);
+      setStandings(roundRobinStandings);
+    }
   };
 
   const organizer = UserService.getPlayerById(tournament.organizerId);
@@ -152,6 +169,14 @@ const TournamentDetailsPage: React.FC<TournamentDetailsPageProps> = ({
                 {participants.length}/{tournament.maxParticipants} players
               </span>
             </div>
+            {tournament.format === 'round_robin' && (
+              <div className="tournament-info-item">
+                <span className="tournament-info-label">Total Matches:</span>
+                <span className="tournament-info-value">
+                  {(participants.length * (participants.length - 1)) / 2}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -203,6 +228,56 @@ const TournamentDetailsPage: React.FC<TournamentDetailsPageProps> = ({
       <div className="tournament-description-card">
         <h3>About This Tournament</h3>
         <p>{tournament.description}</p>
+      </div>
+
+      {/* Format Explanation */}
+      <div className="tournament-format-card">
+        <h3>
+          {tournament.format === 'single_elimination' ? (
+            <>
+              <Trophy size={20} className="inline-icon" />
+              Single Elimination Format
+            </>
+          ) : tournament.format === 'round_robin' ? (
+            <>
+              <RotateCcw size={20} className="inline-icon" />
+              Round Robin Format
+            </>
+          ) : (
+            <>
+              <Award size={20} className="inline-icon" />
+              Tournament Format
+            </>
+          )}
+        </h3>
+        
+        {tournament.format === 'single_elimination' && (
+          <div className="format-explanation">
+            <p>
+              In this single elimination tournament, players compete in a knockout format. Lose once and you're eliminated from the competition.
+            </p>
+            <ul className="format-features">
+              <li>Players are seeded based on their ratings</li>
+              <li>Each match has one winner who advances to the next round</li>
+              <li>The tournament champion is the last player standing</li>
+              <li>Fast-paced format with clear progression</li>
+            </ul>
+          </div>
+        )}
+        
+        {tournament.format === 'round_robin' && (
+          <div className="format-explanation">
+            <p>
+              In this round robin tournament, every player competes against every other player. This format ensures maximum playing time and fair competition.
+            </p>
+            <ul className="format-features">
+              <li>Each player faces all other players exactly once</li>
+              <li>Total of {(participants.length * (participants.length - 1)) / 2} matches</li>
+              <li>Winner determined by most matches won</li>
+              <li>Comprehensive format that tests consistency</li>
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* Registration Status */}
@@ -304,112 +379,269 @@ const TournamentDetailsPage: React.FC<TournamentDetailsPageProps> = ({
     </div>
   );
 
-  const renderBracket = () => (
-    <div className="tournament-bracket">
-      {matches.length > 0 ? (
-        <div className="tournament-bracket-content">
-          <div className="tournament-bracket-header">
-            <h3>Tournament Bracket</h3>
-            <div className="tournament-bracket-legend">
-              <div className="tournament-bracket-legend-item">
-                <div className="tournament-bracket-status completed"></div>
-                <span>Completed</span>
-              </div>
-              <div className="tournament-bracket-legend-item">
-                <div className="tournament-bracket-status in-progress"></div>
-                <span>In Progress</span>
-              </div>
-              <div className="tournament-bracket-legend-item">
-                <div className="tournament-bracket-status pending"></div>
-                <span>Pending</span>
-              </div>
-            </div>
+  const renderBracket = () => {
+    // For round robin tournaments, show a different message
+    if (tournament.format === 'round_robin') {
+      return (
+        <div className="tournament-bracket-round-robin">
+          <div className="round-robin-message">
+            <RotateCcw size={48} />
+            <h3>Round Robin Tournament</h3>
+            <p>This tournament uses a round robin format where every player faces every other player.</p>
+            <p>Please check the "Standings" tab to view the current tournament standings.</p>
           </div>
-
-          {/* Group matches by round */}
-          {Array.from(new Set(matches.map(m => m.round))).sort().map(round => (
-            <div key={round} className="tournament-bracket-round">
-              <h4 className="tournament-bracket-round-title">
-                {round === Math.max(...matches.map(m => m.round)) ? 'Final' :
-                 round === Math.max(...matches.map(m => m.round)) - 1 ? 'Semi-Final' :
-                 `Round ${round}`}
-              </h4>
-              
-              <div className="tournament-bracket-matches">
-                {matches
-                  .filter(m => m.round === round)
-                  .sort((a, b) => a.matchNumber - b.matchNumber)
-                  .map(match => {
-                    const player1 = match.player1Id ? UserService.getPlayerById(match.player1Id) : null;
-                    const player2 = match.player2Id ? UserService.getPlayerById(match.player2Id) : null;
+          
+          <div className="round-robin-matches">
+            <h3>All Matches</h3>
+            <div className="round-robin-matches-grid">
+              {matches.map(match => {
+                const player1 = match.player1Id ? UserService.getPlayerById(match.player1Id) : null;
+                const player2 = match.player2Id ? UserService.getPlayerById(match.player2Id) : null;
+                
+                return (
+                  <div key={match.id} className={`round-robin-match ${match.status}`}>
+                    <div className="round-robin-match-header">
+                      <span className="round-robin-match-number">
+                        Match {match.matchNumber}
+                      </span>
+                      <div className={`round-robin-match-status ${match.status}`}>
+                        {match.status === 'completed' && <CheckCircle size={14} />}
+                        {match.status === 'in_progress' && <Play size={14} />}
+                        {match.status === 'pending' && <Clock size={14} />}
+                      </div>
+                    </div>
                     
-                    return (
-                      <div key={match.id} className={`tournament-bracket-match ${match.status}`}>
-                        <div className="tournament-bracket-match-header">
-                          <span className="tournament-bracket-match-number">
-                            Match {match.matchNumber}
-                          </span>
-                          <div className={`tournament-bracket-match-status ${match.status}`}>
-                            {match.status === 'completed' && <CheckCircle size={14} />}
-                            {match.status === 'in_progress' && <Play size={14} />}
-                            {match.status === 'pending' && <Clock size={14} />}
-                          </div>
-                        </div>
-                        
-                        <div className="tournament-bracket-match-players">
-                          <div className={`tournament-bracket-player ${match.winnerId === match.player1Id ? 'winner' : ''}`}>
-                            <span className="tournament-bracket-player-name">
-                              {player1?.name || 'TBD'}
-                            </span>
-                            {match.score && match.winnerId === match.player1Id && (
-                              <Award size={14} className="tournament-bracket-winner-icon" />
-                            )}
-                          </div>
-                          
-                          <div className="tournament-bracket-vs">vs</div>
-                          
-                          <div className={`tournament-bracket-player ${match.winnerId === match.player2Id ? 'winner' : ''}`}>
-                            <span className="tournament-bracket-player-name">
-                              {player2?.name || 'TBD'}
-                            </span>
-                            {match.score && match.winnerId === match.player2Id && (
-                              <Award size={14} className="tournament-bracket-winner-icon" />
-                            )}
-                          </div>
-                        </div>
-                        
-                        {match.score && (
-                          <div className="tournament-bracket-match-score">
-                            {match.score}
-                          </div>
-                        )}
-                        
-                        {match.scheduledDate && (
-                          <div className="tournament-bracket-match-time">
-                            {new Date(match.scheduledDate).toLocaleString()}
-                          </div>
+                    <div className="round-robin-match-players">
+                      <div className={`round-robin-player ${match.winnerId === match.player1Id ? 'winner' : ''}`}>
+                        <span className="round-robin-player-name">
+                          {player1?.name || 'TBD'}
+                        </span>
+                        {match.score && match.winnerId === match.player1Id && (
+                          <Award size={14} className="round-robin-winner-icon" />
                         )}
                       </div>
-                    );
-                  })}
+                      
+                      <div className="round-robin-vs">vs</div>
+                      
+                      <div className={`round-robin-player ${match.winnerId === match.player2Id ? 'winner' : ''}`}>
+                        <span className="round-robin-player-name">
+                          {player2?.name || 'TBD'}
+                        </span>
+                        {match.score && match.winnerId === match.player2Id && (
+                          <Award size={14} className="round-robin-winner-icon" />
+                        )}
+                      </div>
+                    </div>
+                    
+                    {match.score && (
+                      <div className="round-robin-match-score">
+                        {match.score}
+                      </div>
+                    )}
+                    
+                    {match.scheduledDate && (
+                      <div className="round-robin-match-time">
+                        {new Date(match.scheduledDate).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // For single/double elimination tournaments
+    return (
+      <div className="tournament-bracket">
+        {matches.length > 0 ? (
+          <div className="tournament-bracket-content">
+            <div className="tournament-bracket-header">
+              <h3>Tournament Bracket</h3>
+              <div className="tournament-bracket-legend">
+                <div className="tournament-bracket-legend-item">
+                  <div className="tournament-bracket-status completed"></div>
+                  <span>Completed</span>
+                </div>
+                <div className="tournament-bracket-legend-item">
+                  <div className="tournament-bracket-status in-progress"></div>
+                  <span>In Progress</span>
+                </div>
+                <div className="tournament-bracket-legend-item">
+                  <div className="tournament-bracket-status pending"></div>
+                  <span>Pending</span>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="tournament-bracket-empty">
+
+            {/* Group matches by round */}
+            {Array.from(new Set(matches.map(m => m.round))).sort().map(round => (
+              <div key={round} className="tournament-bracket-round">
+                <h4 className="tournament-bracket-round-title">
+                  {round === Math.max(...matches.map(m => m.round)) ? 'Final' :
+                   round === Math.max(...matches.map(m => m.round)) - 1 ? 'Semi-Final' :
+                   `Round ${round}`}
+                </h4>
+                
+                <div className="tournament-bracket-matches">
+                  {matches
+                    .filter(m => m.round === round)
+                    .sort((a, b) => a.matchNumber - b.matchNumber)
+                    .map(match => {
+                      const player1 = match.player1Id ? UserService.getPlayerById(match.player1Id) : null;
+                      const player2 = match.player2Id ? UserService.getPlayerById(match.player2Id) : null;
+                      
+                      return (
+                        <div key={match.id} className={`tournament-bracket-match ${match.status}`}>
+                          <div className="tournament-bracket-match-header">
+                            <span className="tournament-bracket-match-number">
+                              Match {match.matchNumber}
+                            </span>
+                            <div className={`tournament-bracket-match-status ${match.status}`}>
+                              {match.status === 'completed' && <CheckCircle size={14} />}
+                              {match.status === 'in_progress' && <Play size={14} />}
+                              {match.status === 'pending' && <Clock size={14} />}
+                            </div>
+                          </div>
+                          
+                          <div className="tournament-bracket-match-players">
+                            <div className={`tournament-bracket-player ${match.winnerId === match.player1Id ? 'winner' : ''}`}>
+                              <span className="tournament-bracket-player-name">
+                                {player1?.name || 'TBD'}
+                              </span>
+                              {match.score && match.winnerId === match.player1Id && (
+                                <Award size={14} className="tournament-bracket-winner-icon" />
+                              )}
+                            </div>
+                            
+                            <div className="tournament-bracket-vs">vs</div>
+                            
+                            <div className={`tournament-bracket-player ${match.winnerId === match.player2Id ? 'winner' : ''}`}>
+                              <span className="tournament-bracket-player-name">
+                                {player2?.name || 'TBD'}
+                              </span>
+                              {match.score && match.winnerId === match.player2Id && (
+                                <Award size={14} className="tournament-bracket-winner-icon" />
+                              )}
+                            </div>
+                          </div>
+                          
+                          {match.score && (
+                            <div className="tournament-bracket-match-score">
+                              {match.score}
+                            </div>
+                          )}
+                          
+                          {match.scheduledDate && (
+                            <div className="tournament-bracket-match-time">
+                              {new Date(match.scheduledDate).toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="tournament-bracket-empty">
+            <Trophy size={48} />
+            <h3>Bracket Not Generated Yet</h3>
+            <p>
+              {tournament.status === 'registration_open' 
+                ? 'The tournament bracket will be generated after registration closes.'
+                : 'Bracket generation is in progress.'
+              }
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderStandings = () => {
+    if (tournament.format !== 'round_robin') {
+      return (
+        <div className="tournament-standings-not-available">
           <Trophy size={48} />
-          <h3>Bracket Not Generated Yet</h3>
-          <p>
-            {tournament.status === 'registration_open' 
-              ? 'The tournament bracket will be generated after registration closes.'
-              : 'Bracket generation is in progress.'
-            }
-          </p>
+          <h3>Standings Not Available</h3>
+          <p>Standings are only available for Round Robin tournaments.</p>
         </div>
-      )}
-    </div>
-  );
+      );
+    }
+
+    return (
+      <div className="tournament-standings">
+        <div className="tournament-standings-header">
+          <h3>Tournament Standings</h3>
+          <div className="tournament-standings-note">
+            Players ranked by wins, then win percentage
+          </div>
+        </div>
+        
+        {standings.length > 0 ? (
+          <div className="tournament-standings-table">
+            <div className="tournament-standings-table-header">
+              <div className="standings-rank-col">Rank</div>
+              <div className="standings-player-col">Player</div>
+              <div className="standings-record-col">Record</div>
+              <div className="standings-win-col">Win %</div>
+            </div>
+            
+            <div className="tournament-standings-table-body">
+              {standings.map((standing) => {
+                return (
+                  <div key={standing.playerId} className="tournament-standings-table-row">
+                    <div className="standings-rank-col">
+                      <div className="standings-rank">
+                        {standing.position === 1 && <Trophy size={16} className="standings-trophy" />}
+                        {standing.position}
+                      </div>
+                    </div>
+                    
+                    <div className="standings-player-col">
+                      <div className="standings-player-info">
+                        <div className="player-avatar">
+                          {standing.player?.name.split(' ').map((n: string) => n[0]).join('') || '?'}
+                        </div>
+                        <div className="standings-player-details">
+                          <div className="standings-player-name">{standing.player?.name || 'Unknown Player'}</div>
+                          <div className="standings-player-rating">Rating: {standing.player?.rating || '?'}</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="standings-record-col">
+                      <div className="standings-record">
+                        <span className="standings-wins">{standing.wins}</span>
+                        <span className="standings-separator">-</span>
+                        <span className="standings-losses">{standing.losses}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="standings-win-col">
+                      <div className="standings-win-percentage">
+                        {standing.winPercentage.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="tournament-standings-empty">
+            <BarChart3 size={48} />
+            <h3>No Matches Completed Yet</h3>
+            <p>Standings will be available once matches begin.</p>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="tournament-details-page">
@@ -450,13 +682,32 @@ const TournamentDetailsPage: React.FC<TournamentDetailsPageProps> = ({
             <Users size={16} />
             Players ({participants.length})
           </button>
-          <button
-            onClick={() => setActiveTab('bracket')}
-            className={`tournament-details-tab ${activeTab === 'bracket' ? 'active' : ''}`}
-          >
-            <Award size={16} />
-            Bracket
-          </button>
+          {tournament.format === 'round_robin' ? (
+            <button
+              onClick={() => setActiveTab('standings')}
+              className={`tournament-details-tab ${activeTab === 'standings' ? 'active' : ''}`}
+            >
+              <BarChart3 size={16} />
+              Standings
+            </button>
+          ) : (
+            <button
+              onClick={() => setActiveTab('bracket')}
+              className={`tournament-details-tab ${activeTab === 'bracket' ? 'active' : ''}`}
+            >
+              <Award size={16} />
+              Bracket
+            </button>
+          )}
+          {tournament.format === 'round_robin' && (
+            <button
+              onClick={() => setActiveTab('bracket')}
+              className={`tournament-details-tab ${activeTab === 'bracket' ? 'active' : ''}`}
+            >
+              <Play size={16} />
+              Matches
+            </button>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -464,6 +715,7 @@ const TournamentDetailsPage: React.FC<TournamentDetailsPageProps> = ({
           {activeTab === 'overview' && renderOverview()}
           {activeTab === 'participants' && renderParticipants()}
           {activeTab === 'bracket' && renderBracket()}
+          {activeTab === 'standings' && renderStandings()}
         </div>
       </div>
     </div>
