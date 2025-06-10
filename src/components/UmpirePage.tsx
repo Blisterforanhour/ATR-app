@@ -51,7 +51,7 @@ const UmpirePage: React.FC = () => {
 
   useEffect(() => {
     loadTournaments();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (selectedTournament) {
@@ -60,11 +60,36 @@ const UmpirePage: React.FC = () => {
   }, [selectedTournament]);
 
   const loadTournaments = () => {
+    if (!user) return;
+
     const allTournaments = TournamentService.getAllTournaments();
-    // Filter tournaments that are in progress or ready to start
-    const activeTournaments = allTournaments.filter(t => 
+    
+    // Filter tournaments based on user involvement
+    const userRelevantTournaments = allTournaments.filter(tournament => {
+      // Show tournaments where user is the organizer
+      if (tournament.organizerId === user.id) {
+        return true;
+      }
+      
+      // Show tournaments where user is the assigned umpire
+      if (tournament.umpireId === user.id) {
+        return true;
+      }
+      
+      // Show tournaments where user is registered as a participant
+      const isParticipant = TournamentService.isPlayerRegistered(tournament.id, user.id);
+      if (isParticipant) {
+        return true;
+      }
+      
+      return false;
+    });
+
+    // Filter to only show tournaments that are ready to start or in progress
+    const activeTournaments = userRelevantTournaments.filter(t => 
       t.status === 'registration_closed' || t.status === 'in_progress'
     );
+    
     setTournaments(activeTournaments);
   };
 
@@ -294,6 +319,15 @@ const UmpirePage: React.FC = () => {
     return 'var(--text-muted)';
   };
 
+  const getUserRole = (tournament: Tournament) => {
+    if (!user) return '';
+    
+    if (tournament.organizerId === user.id) return 'Organizer';
+    if (tournament.umpireId === user.id) return 'Umpire';
+    if (TournamentService.isPlayerRegistered(tournament.id, user.id)) return 'Participant';
+    return '';
+  };
+
   // Main Dashboard View
   if (!activeMatch) {
     return (
@@ -302,111 +336,152 @@ const UmpirePage: React.FC = () => {
           <div className="umpire-header">
             <h1 className="umpire-title">
               <Trophy size={32} />
-              Umpire Dashboard
+              Live Scoring Dashboard
             </h1>
             <p className="umpire-subtitle">
-              Manage live tournament matches and scoring
+              Manage live tournament matches and scoring for your tournaments
             </p>
           </div>
 
-          {/* Tournament Selection */}
-          <div className="umpire-tournament-section">
-            <h2 className="umpire-section-title">Select Tournament</h2>
-            <div className="umpire-tournament-grid">
-              {tournaments.map(tournament => (
-                <div
-                  key={tournament.id}
-                  className={`umpire-tournament-card ${selectedTournament?.id === tournament.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedTournament(tournament)}
-                >
-                  <div className="umpire-tournament-header">
-                    <h3 className="umpire-tournament-name">{tournament.name}</h3>
-                    <div 
-                      className="umpire-tournament-status"
-                      style={{ 
-                        backgroundColor: tournament.status === 'in_progress' ? 'rgba(64, 220, 255, 0.2)' : 'rgba(255, 149, 0, 0.2)',
-                        color: tournament.status === 'in_progress' ? 'var(--quantum-cyan)' : 'var(--warning-orange)'
-                      }}
-                    >
-                      {tournament.status === 'in_progress' ? 'Live' : 'Ready to Start'}
-                    </div>
-                  </div>
-                  <p className="umpire-tournament-location">{tournament.location}</p>
-                  
-                  {tournament.status === 'registration_closed' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartTournamentClick(tournament);
-                      }}
-                      className="umpire-start-tournament-btn"
-                    >
-                      <Play size={16} />
-                      Start Tournament
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Matches List */}
-          {selectedTournament && (
-            <div className="umpire-matches-section">
-              <h2 className="umpire-section-title">
-                <Users size={24} />
-                Tournament Matches
-              </h2>
-              
-              <div className="umpire-matches-grid">
-                {matches.map(match => {
-                  const player1 = match.player1Id ? UserService.getPlayerById(match.player1Id) : null;
-                  const player2 = match.player2Id ? UserService.getPlayerById(match.player2Id) : null;
-                  
-                  return (
-                    <div key={match.id} className="umpire-match-card">
-                      <div className="umpire-match-header">
-                        <div className="umpire-match-round">
-                          Round {match.round} - Match {match.matchNumber}
-                        </div>
-                        <div 
-                          className="umpire-match-status"
-                          style={{ color: getStatusColor(match) }}
-                        >
-                          {getMatchStatus(match)}
-                        </div>
-                      </div>
-                      
-                      <div className="umpire-match-players">
-                        <div className="umpire-match-player">
-                          {player1 ? player1.name : 'TBD'}
-                        </div>
-                        <div className="umpire-match-vs">vs</div>
-                        <div className="umpire-match-player">
-                          {player2 ? player2.name : 'TBD'}
-                        </div>
-                      </div>
-
-                      {match.score && (
-                        <div className="umpire-match-score">
-                          Final Score: {match.score}
-                        </div>
-                      )}
-
-                      {match.status === 'pending' && player1 && player2 && (
-                        <button
-                          onClick={() => handleStartMatch(match)}
-                          className="umpire-match-btn"
-                        >
-                          <Play size={16} />
-                          Umpire Match
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+          {tournaments.length === 0 ? (
+            <div className="umpire-empty-state">
+              <div className="umpire-empty-content">
+                <Trophy size={64} className="umpire-empty-icon" />
+                <h3 className="umpire-empty-title">
+                  No Active Tournaments
+                </h3>
+                <p className="umpire-empty-description">
+                  You don't have any tournaments ready for live scoring. You can only see tournaments where you are:
+                </p>
+                <ul className="umpire-empty-list">
+                  <li>• The tournament organizer</li>
+                  <li>• The assigned umpire</li>
+                  <li>• A registered participant</li>
+                </ul>
+                <p className="umpire-empty-note">
+                  Tournaments must have closed registration to appear here.
+                </p>
               </div>
             </div>
+          ) : (
+            <>
+              {/* Tournament Selection */}
+              <div className="umpire-tournament-section">
+                <h2 className="umpire-section-title">Your Tournaments</h2>
+                <div className="umpire-tournament-grid">
+                  {tournaments.map(tournament => {
+                    const userRole = getUserRole(tournament);
+                    return (
+                      <div
+                        key={tournament.id}
+                        className={`umpire-tournament-card ${selectedTournament?.id === tournament.id ? 'selected' : ''}`}
+                        onClick={() => setSelectedTournament(tournament)}
+                      >
+                        <div className="umpire-tournament-header">
+                          <h3 className="umpire-tournament-name">{tournament.name}</h3>
+                          <div 
+                            className="umpire-tournament-status"
+                            style={{ 
+                              backgroundColor: tournament.status === 'in_progress' ? 'rgba(0, 212, 255, 0.2)' : 'rgba(255, 149, 0, 0.2)',
+                              color: tournament.status === 'in_progress' ? 'var(--quantum-cyan)' : 'var(--warning-orange)'
+                            }}
+                          >
+                            {tournament.status === 'in_progress' ? 'Live' : 'Ready to Start'}
+                          </div>
+                        </div>
+                        
+                        <p className="umpire-tournament-location">{tournament.location}</p>
+                        
+                        <div className="umpire-tournament-role">
+                          <span className="role-badge" style={{
+                            backgroundColor: userRole === 'Organizer' ? 'rgba(0, 255, 170, 0.2)' : 
+                                           userRole === 'Umpire' ? 'rgba(0, 212, 255, 0.2)' : 
+                                           'rgba(255, 149, 0, 0.2)',
+                            color: userRole === 'Organizer' ? 'var(--success-green)' : 
+                                   userRole === 'Umpire' ? 'var(--quantum-cyan)' : 
+                                   'var(--warning-orange)'
+                          }}>
+                            Your Role: {userRole}
+                          </span>
+                        </div>
+                        
+                        {tournament.status === 'registration_closed' && (tournament.organizerId === user?.id || tournament.umpireId === user?.id) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartTournamentClick(tournament);
+                            }}
+                            className="umpire-start-tournament-btn"
+                          >
+                            <Play size={16} />
+                            Start Tournament
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Matches List */}
+              {selectedTournament && (
+                <div className="umpire-matches-section">
+                  <h2 className="umpire-section-title">
+                    <Users size={24} />
+                    Tournament Matches
+                  </h2>
+                  
+                  <div className="umpire-matches-grid">
+                    {matches.map(match => {
+                      const player1 = match.player1Id ? UserService.getPlayerById(match.player1Id) : null;
+                      const player2 = match.player2Id ? UserService.getPlayerById(match.player2Id) : null;
+                      
+                      return (
+                        <div key={match.id} className="umpire-match-card">
+                          <div className="umpire-match-header">
+                            <div className="umpire-match-round">
+                              Round {match.round} - Match {match.matchNumber}
+                            </div>
+                            <div 
+                              className="umpire-match-status"
+                              style={{ color: getStatusColor(match) }}
+                            >
+                              {getMatchStatus(match)}
+                            </div>
+                          </div>
+                          
+                          <div className="umpire-match-players">
+                            <div className="umpire-match-player">
+                              {player1 ? player1.name : 'TBD'}
+                            </div>
+                            <div className="umpire-match-vs">vs</div>
+                            <div className="umpire-match-player">
+                              {player2 ? player2.name : 'TBD'}
+                            </div>
+                          </div>
+
+                          {match.score && (
+                            <div className="umpire-match-score">
+                              Final Score: {match.score}
+                            </div>
+                          )}
+
+                          {match.status === 'pending' && player1 && player2 && (selectedTournament.umpireId === user?.id || selectedTournament.organizerId === user?.id) && (
+                            <button
+                              onClick={() => handleStartMatch(match)}
+                              className="umpire-match-btn"
+                            >
+                              <Play size={16} />
+                              Umpire Match
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Start Tournament Confirmation Modal */}
