@@ -1,12 +1,12 @@
 /* Light Mode - "Glacier White" Theme - Enhanced for Readability & Comfort */
 .theme-light {
   /* === PRIMARY COLORS === */
-  --quantum-cyan: #0369a1;        /* HEX: #0369a1 | RGB: 3, 105, 161 */
+  --quantum-cyan: #0066cc;        /* HEX: #0066cc | RGB: 0, 102, 204 */
   --nebula-purple: #7c3aed;       /* HEX: #7c3aed | RGB: 124, 58, 237 */
   
   /* === BRAND COLORS === */
-  --brand-forest: #2C5530;        /* HEX: #2C5530 | RGB: 44, 85, 48 */
-  --brand-forest-dark: #1e3a21;   /* HEX: #1e3a21 | RGB: 30, 58, 33 */
+  --brand-forest: #0066cc;        /* HEX: #0066cc | RGB: 0, 102, 204 */
+  --brand-forest-dark: #004499;   /* HEX: #004499 | RGB: 0, 68, 153 */
   --brand-sand: #F5DEB3;          /* HEX: #F5DEB3 | RGB: 245, 222, 179 */
   --brand-sand-light: #faf6ed;    /* HEX: #faf6ed | RGB: 250, 246, 237 */
   
@@ -30,19 +30,19 @@
   
   /* === LOGIN SPECIFIC COLORS === */
   --login-bg: linear-gradient(135deg, #faf6ed 0%, #f8fafc 50%, #ffffff 100%);
-  --login-pattern: radial-gradient(circle at 25% 25%, #2C5530 0%, transparent 50%);
+  --login-pattern: radial-gradient(circle at 25% 25%, #0066cc 0%, transparent 50%);
   --login-card-bg: rgba(255, 255, 255, 0.95);
-  --login-border: rgba(44, 85, 48, 0.08);
-  --login-shadow: 0 20px 60px rgba(44, 85, 48, 0.08), 0 8px 32px rgba(0, 0, 0, 0.04);
+  --login-border: rgba(0, 102, 204, 0.08);
+  --login-shadow: 0 20px 60px rgba(0, 102, 204, 0.08), 0 8px 32px rgba(0, 0, 0, 0.04);
   
   --login-text-primary: #0f172a;
   --login-text-secondary: #475569;
   --login-text-muted: #64748b;
   
   --login-input-bg: rgba(255, 255, 255, 0.98);
-  --login-input-border: rgba(44, 85, 48, 0.15);
-  --login-focus-ring: rgba(44, 85, 48, 0.1);
-  --login-hover-bg: rgba(44, 85, 48, 0.05);
+  --login-input-border: rgba(0, 102, 204, 0.15);
+  --login-focus-ring: rgba(0, 102, 204, 0.1);
+  --login-hover-bg: rgba(0, 102, 204, 0.05);
   
   --login-error: #dc2626;
   --login-error-bg: rgba(220, 38, 38, 0.05);
@@ -57,60 +57,60 @@
   
   /* === ONBOARDING SPECIFIC COLORS === */
   --onboarding-bg: linear-gradient(135deg, #faf6ed 0%, #f0f9ff 25%, #ede9fe 50%, #ecfdf5 75%, #f0fdfa 100%);
-  --onboarding-pattern: radial-gradient(circle at 75% 25%, #2C5530 0%, transparent 50%), 
+  --onboarding-pattern: radial-gradient(circle at 75% 25%, #0066cc 0%, transparent 50%), 
                         radial-gradient(circle at 25% 75%, #7c3aed 0%, transparent 50%),
-                        radial-gradient(circle at 50% 50%, #0369a1 0%, transparent 50%);
+                        radial-gradient(circle at 50% 50%, #0066cc 0%, transparent 50%);
   
   --onboarding-card-bg: rgba(255, 255, 255, 0.95);
-  --onboarding-card-pattern: linear-gradient(45deg, #2C5530 0%, #7c3aed 50%, #0369a1 100%);
-  --onboarding-border: rgba(44, 85, 48, 0.12);
-  --onboarding-shadow: 0 25px 80px rgba(44, 85, 48, 0.12), 0 12px 40px rgba(0, 0, 0, 0.08);
+  --onboarding-card-pattern: linear-gradient(45deg, #0066cc 0%, #7c3aed 50%, #0066cc 100%);
+  --onboarding-border: rgba(0, 102, 204, 0.12);
+  --onboarding-shadow: 0 25px 80px rgba(0, 102, 204, 0.12), 0 12px 40px rgba(0, 0, 0, 0.08);
   
   --onboarding-text-primary: #0f172a;
   --onboarding-text-secondary: #475569;
   --onboarding-text-muted: #64748b;
-  --onboarding-text-accent: #2C5530;
+  --onboarding-text-accent: #0066cc;
   
-  --onboarding-icon-bg: linear-gradient(135deg, #2C5530 0%, #1e3a21 100%);
+  --onboarding-icon-bg: linear-gradient(135deg, #0066cc 0%, #004499 100%);
   --onboarding-icon-color: #ffffff;
-  --onboarding-icon-shadow: rgba(44, 85, 48, 0.3);
-  --onboarding-icon-accent: #2C5530;
+  --onboarding-icon-shadow: rgba(0, 102, 204, 0.3);
+  --onboarding-icon-accent: #0066cc;
   
   --onboarding-input-bg: rgba(255, 255, 255, 0.98);
-  --onboarding-input-border: rgba(44, 85, 48, 0.15);
-  --onboarding-focus-color: #2C5530;
-  --onboarding-focus-ring: rgba(44, 85, 48, 0.1);
+  --onboarding-input-border: rgba(0, 102, 204, 0.15);
+  --onboarding-focus-color: #0066cc;
+  --onboarding-focus-ring: rgba(0, 102, 204, 0.1);
   
   --onboarding-option-bg: rgba(255, 255, 255, 0.8);
-  --onboarding-option-border: rgba(44, 85, 48, 0.12);
-  --onboarding-option-hover: #2C5530;
-  --onboarding-option-hover-border: rgba(44, 85, 48, 0.3);
-  --onboarding-option-shadow: rgba(44, 85, 48, 0.15);
+  --onboarding-option-border: rgba(0, 102, 204, 0.12);
+  --onboarding-option-hover: #0066cc;
+  --onboarding-option-hover-border: rgba(0, 102, 204, 0.3);
+  --onboarding-option-shadow: rgba(0, 102, 204, 0.15);
   
-  --onboarding-selected-bg: rgba(44, 85, 48, 0.05);
-  --onboarding-selected-border: #2C5530;
-  --onboarding-selected-shadow: rgba(44, 85, 48, 0.2);
-  --onboarding-selected-indicator: #2C5530;
-  --onboarding-indicator-ring: rgba(44, 85, 48, 0.2);
+  --onboarding-selected-bg: rgba(0, 102, 204, 0.05);
+  --onboarding-selected-border: #0066cc;
+  --onboarding-selected-shadow: rgba(0, 102, 204, 0.2);
+  --onboarding-selected-indicator: #0066cc;
+  --onboarding-indicator-ring: rgba(0, 102, 204, 0.2);
   
   --onboarding-rating-bg: rgba(255, 255, 255, 0.9);
-  --onboarding-rating-border: rgba(44, 85, 48, 0.15);
+  --onboarding-rating-border: rgba(0, 102, 204, 0.15);
   
-  --onboarding-button-bg: linear-gradient(135deg, #2C5530 0%, #1e3a21 100%);
+  --onboarding-button-bg: linear-gradient(135deg, #0066cc 0%, #004499 100%);
   --onboarding-button-text: #ffffff;
-  --onboarding-button-shadow: rgba(44, 85, 48, 0.3);
-  --onboarding-button-hover-shadow: rgba(44, 85, 48, 0.4);
+  --onboarding-button-shadow: rgba(0, 102, 204, 0.3);
+  --onboarding-button-hover-shadow: rgba(0, 102, 204, 0.4);
   
   --onboarding-disabled-bg: #e2e8f0;
   --onboarding-disabled-text: #94a3b8;
   
   /* === SKILL LEVEL COLORS === */
-  --skill-beginner: #059669;
+  --skill-beginner: #0066cc;
   --skill-intermediate: #d97706;
   --skill-advanced: #dc2626;
   
   /* === BORDER COLORS === */
-  --border-primary: rgba(44, 85, 48, 0.3);
+  --border-primary: rgba(0, 102, 204, 0.3);
   --border-secondary: rgba(124, 58, 237, 0.3);
   --border-subtle: rgba(15, 23, 42, 0.12);
   --border-muted: rgba(15, 23, 42, 0.06);
@@ -121,36 +121,36 @@
   --glass-highlight: rgba(255, 255, 255, 0.95);
   
   /* === SHADOW COLORS === */
-  --shadow-quantum: rgba(3, 105, 161, 0.25);
+  --shadow-quantum: rgba(0, 102, 204, 0.25);
   --shadow-nebula: rgba(124, 58, 237, 0.25);
   --shadow-standard: rgba(15, 23, 42, 0.08);
   --shadow-elevated: rgba(15, 23, 42, 0.12);
   
   /* === GRADIENT DEFINITIONS === */
-  --gradient-primary: linear-gradient(135deg, #2C5530 0%, #1e3a21 100%);
-  --gradient-success: linear-gradient(135deg, #059669 0%, #0369a1 100%);
+  --gradient-primary: linear-gradient(135deg, #0066cc 0%, #004499 50%, #7c3aed 100%);
+  --gradient-success: linear-gradient(135deg, #059669 0%, #0066cc 100%);
   --gradient-error: linear-gradient(135deg, #dc2626 0%, #d97706 100%);
-  --gradient-hero: linear-gradient(135deg, #2C5530 0%, #7c3aed 35%, #ca8a04 70%, #059669 100%);
+  --gradient-hero: linear-gradient(135deg, #0066cc 0%, #7c3aed 35%, #ca8a04 70%, #059669 100%);
   
   /* === INTERACTIVE STATES === */
   --hover-bg: rgba(15, 23, 42, 0.04);
   --active-bg: rgba(15, 23, 42, 0.08);
-  --focus-ring: #2C5530;
+  --focus-ring: #0066cc;
   
   /* === COMPONENT-SPECIFIC COLORS === */
   --input-bg: rgba(255, 255, 255, 0.95);
   --input-border: rgba(15, 23, 42, 0.15);
-  --input-focus-border: #2C5530;
+  --input-focus-border: #0066cc;
   
   --button-primary-bg: var(--gradient-primary);
-  --button-secondary-bg: rgba(44, 85, 48, 0.08);
+  --button-secondary-bg: rgba(0, 102, 204, 0.08);
   --button-danger-bg: var(--gradient-error);
   
   --modal-backdrop: rgba(15, 23, 42, 0.4);
   --modal-bg: var(--glass-bg);
   
   /* === RATING COLORS === */
-  --rating-beginner: #059669;
+  --rating-beginner: #0066cc;
   --rating-intermediate: #d97706;
   --rating-advanced: #dc2626;
   --rating-expert: #991b1b;
@@ -170,7 +170,7 @@
   box-shadow: 
     0 4px 12px rgba(15, 23, 42, 0.1),
     0 8px 24px rgba(15, 23, 42, 0.08);
-  border-color: rgba(44, 85, 48, 0.2);
+  border-color: rgba(0, 102, 204, 0.2);
 }
 
 /* Modal Enhancements */
@@ -185,25 +185,25 @@
 .theme-light .btn-primary {
   background: var(--gradient-primary);
   box-shadow: 
-    0 2px 8px rgba(44, 85, 48, 0.2),
-    0 4px 16px rgba(44, 85, 48, 0.1);
+    0 2px 8px rgba(0, 102, 204, 0.2),
+    0 4px 16px rgba(0, 102, 204, 0.1);
 }
 
 .theme-light .btn-primary:hover {
   box-shadow: 
-    0 4px 16px rgba(44, 85, 48, 0.25),
-    0 8px 32px rgba(44, 85, 48, 0.15);
+    0 4px 16px rgba(0, 102, 204, 0.25),
+    0 8px 32px rgba(0, 102, 204, 0.15);
 }
 
 .theme-light .btn-secondary {
-  background: rgba(44, 85, 48, 0.06);
-  border: 1px solid rgba(44, 85, 48, 0.2);
-  color: #2C5530;
+  background: rgba(0, 102, 204, 0.06);
+  border: 1px solid rgba(0, 102, 204, 0.2);
+  color: #0066cc;
 }
 
 .theme-light .btn-secondary:hover {
-  background: rgba(44, 85, 48, 0.1);
-  border-color: rgba(44, 85, 48, 0.3);
+  background: rgba(0, 102, 204, 0.1);
+  border-color: rgba(0, 102, 204, 0.3);
 }
 
 .theme-light .btn-ghost {
@@ -235,9 +235,9 @@
 }
 
 .theme-light .sidebar-nav-item.active {
-  background: rgba(44, 85, 48, 0.08);
-  color: #2C5530;
-  border: 1px solid rgba(44, 85, 48, 0.2);
+  background: rgba(0, 102, 204, 0.08);
+  color: #0066cc;
+  border: 1px solid rgba(0, 102, 204, 0.2);
 }
 
 /* Form Enhancements */
@@ -252,10 +252,10 @@
 .theme-light .form-input:focus,
 .theme-light .form-select:focus,
 .theme-light .form-textarea:focus {
-  border-color: #2C5530;
+  border-color: #0066cc;
   box-shadow: 
-    0 0 0 3px rgba(44, 85, 48, 0.08),
-    0 2px 8px rgba(44, 85, 48, 0.04);
+    0 0 0 3px rgba(0, 102, 204, 0.08),
+    0 2px 8px rgba(0, 102, 204, 0.04);
 }
 
 .theme-light .form-input::placeholder {
@@ -265,7 +265,7 @@
 /* Loading Spinner */
 .theme-light .loading-spinner {
   border-color: rgba(15, 23, 42, 0.1);
-  border-top-color: #2C5530;
+  border-top-color: #0066cc;
 }
 
 /* Dashboard Welcome Section - Light Mode Specific */
@@ -284,11 +284,11 @@
 
 .theme-light .dashboard-welcome::before {
   background: linear-gradient(45deg, 
-    rgba(44, 85, 48, 0.3) 0%, 
+    rgba(0, 102, 204, 0.3) 0%, 
     rgba(124, 58, 237, 0.3) 25%, 
     rgba(5, 150, 105, 0.3) 50%, 
     rgba(202, 138, 4, 0.3) 75%, 
-    rgba(44, 85, 48, 0.3) 100%
+    rgba(0, 102, 204, 0.3) 100%
   );
 }
 
@@ -317,12 +317,12 @@
   box-shadow: 
     0 4px 16px rgba(15, 23, 42, 0.08),
     0 8px 32px rgba(15, 23, 42, 0.04);
-  border-color: rgba(44, 85, 48, 0.15);
+  border-color: rgba(0, 102, 204, 0.15);
 }
 
 /* Player Cards */
 .theme-light .player-avatar {
-  box-shadow: 0 4px 12px rgba(44, 85, 48, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15);
 }
 
 /* Tournament and Match Cards */
@@ -359,7 +359,7 @@
 .theme-light .form-input:focus,
 .theme-light .form-select:focus,
 .theme-light .form-textarea:focus {
-  outline: 2px solid #2C5530;
+  outline: 2px solid #0066cc;
   outline-offset: 2px;
 }
 
@@ -370,7 +370,7 @@
     --text-subtle: #333333;
     --border-subtle: rgba(0, 0, 0, 0.2);
     --shadow-standard: rgba(0, 0, 0, 0.15);
-    --brand-forest: #1a3d1e;
+    --brand-forest: #004499;
   }
   
   .theme-light .card,
@@ -379,7 +379,7 @@
   }
   
   .theme-light .btn-primary {
-    border: 2px solid #2C5530;
+    border: 2px solid #0066cc;
   }
 }
 
