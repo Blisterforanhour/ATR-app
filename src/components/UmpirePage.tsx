@@ -130,32 +130,25 @@ const UmpirePage: React.FC = () => {
     if (tournamentToStart) {
       console.log('Starting tournament:', tournamentToStart.name);
       
-      // Close registration and generate bracket
-      const success = TournamentService.closeRegistration(tournamentToStart.id);
-      if (success) {
-        // Generate the bracket
-        const bracketGenerated = TournamentService.generateBracket(tournamentToStart.id);
-        if (bracketGenerated) {
-          console.log('Tournament started and bracket generated successfully');
-          
-          // Update the selected tournament if it's the one we just started
-          if (selectedTournament?.id === tournamentToStart.id) {
-            const updatedTournament = TournamentService.getTournamentById(tournamentToStart.id);
-            if (updatedTournament) {
-              setSelectedTournament(updatedTournament);
-            }
+      // Generate the bracket (this will also update the tournament status to 'in_progress')
+      const bracketGenerated = TournamentService.generateBracket(tournamentToStart.id);
+      if (bracketGenerated) {
+        console.log('Tournament started and bracket generated successfully');
+        
+        // Update the selected tournament if it's the one we just started
+        if (selectedTournament?.id === tournamentToStart.id) {
+          const updatedTournament = TournamentService.getTournamentById(tournamentToStart.id);
+          if (updatedTournament) {
+            setSelectedTournament(updatedTournament);
           }
-          
-          // Reload tournaments and matches
-          loadTournaments();
-          loadMatches();
-        } else {
-          console.error('Failed to generate bracket');
-          alert('Failed to generate tournament bracket. Please ensure there are enough participants.');
         }
+        
+        // Reload tournaments and matches
+        loadTournaments();
+        loadMatches();
       } else {
-        console.error('Failed to close registration');
-        alert('Failed to start tournament. Please try again.');
+        console.error('Failed to generate bracket');
+        alert('Failed to generate tournament bracket. Please ensure there are enough participants.');
       }
       
       setShowStartConfirmation(false);
@@ -465,7 +458,7 @@ const UmpirePage: React.FC = () => {
   const player1 = activeMatch.player1Id ? UserService.getPlayerById(activeMatch.player1Id) : null;
   const player2 = activeMatch.player2Id ? UserService.getPlayerById(activeMatch.player2Id) : null;
 
-  if (!player1 || player2 || !matchScore) return null;
+  if (!player1 || !player2 || !matchScore) return null;
 
   return (
     <div className="umpire-scoring-page">
