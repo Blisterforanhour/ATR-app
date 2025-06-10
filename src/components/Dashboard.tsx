@@ -1,21 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Target, Zap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { UserService } from '../services/UserService';
-import { MatchService } from '../services/MatchService';
-import { TournamentService } from '../services/TournamentService';
 import MatchCreateForm from './MatchCreateForm';
+import { useState } from 'react';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [showCreateForm, setShowCreateForm] = useState(false);
-
-  useEffect(() => {
-    // Initialize mock data for all services
-    UserService.initializeMockData();
-    TournamentService.initializeMockData();
-    MatchService.initializeMockData();
-  }, []);
 
   const handleCreateMatch = () => {
     setShowCreateForm(true);

@@ -6,7 +6,7 @@ import { UserService } from '../services/UserService';
 import { Match } from '../types';
 import MatchCard from './MatchCard';
 import ScoreModal from './ScoreModal';
-import MatchCreateForm from './MatchCreateForm';
+import MatchModal from './MatchModal';
 import MatchDetailsPage from './MatchDetailsPage';
 
 interface ExpandedMatchData {
@@ -600,9 +600,11 @@ const MatchesPage: React.FC = () => {
 
       {/* Match Creation Form */}
       {showCreateForm && (
-        <MatchCreateForm
+        <MatchModal
+          isOpen={showCreateForm}
           onClose={() => setShowCreateForm(false)}
           onMatchCreated={handleMatchCreated}
+          mode="create"
         />
       )}
     </div>

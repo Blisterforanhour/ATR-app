@@ -30,6 +30,12 @@ interface MatchScore {
   servingPlayer: 'player1' | 'player2';
 }
 
+interface MatchScoreHistory {
+  score: MatchScore;
+  timestamp: number;
+  action: string;
+}
+
 const UmpirePage: React.FC = () => {
   const { user } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -37,6 +43,8 @@ const UmpirePage: React.FC = () => {
   const [matches, setMatches] = useState<TournamentMatch[]>([]);
   const [activeMatch, setActiveMatch] = useState<TournamentMatch | null>(null);
   const [matchScore, setMatchScore] = useState<MatchScore | null>(null);
+  const [scoreHistory, setScoreHistory] = useState<MatchScoreHistory[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
   const [showStartConfirmation, setShowStartConfirmation] = useState(false);
   const [showEndMatchConfirmation, setShowEndMatchConfirmation] = useState(false);
 
@@ -81,6 +89,21 @@ const UmpirePage: React.FC = () => {
     };
   };
 
+  const saveScoreToHistory = (score: MatchScore, action: string) => {
+    const historyEntry: MatchScoreHistory = {
+      score: JSON.parse(JSON.stringify(score)), // Deep clone
+      timestamp: Date.now(),
+      action
+    };
+    
+    setScoreHistory(prev => {
+      const newHistory = [...prev, historyEntry];
+      // Keep only last 50 actions to prevent memory issues
+      return newHistory.slice(-50);
+    });
+    setCanUndo(true);
+  };
+
   const getPointDisplay = (points: number, isDeuce: boolean, advantage: 'player1' | 'player2' | null, player: 'player1' | 'player2') => {
     if (isDeuce) {
       if (advantage === player) return 'AD';
@@ -110,16 +133,24 @@ const UmpirePage: React.FC = () => {
 
   const handleStartMatch = (match: TournamentMatch) => {
     setActiveMatch(match);
-    setMatchScore(initializeMatchScore());
+    const initialScore = initializeMatchScore();
+    setMatchScore(initialScore);
+    setScoreHistory([]);
+    setCanUndo(false);
   };
 
   const handleBackToMatches = () => {
     setActiveMatch(null);
     setMatchScore(null);
+    setScoreHistory([]);
+    setCanUndo(false);
   };
 
   const awardPoint = (player: 'player1' | 'player2') => {
     if (!matchScore) return;
+
+    // Save current state before making changes
+    saveScoreToHistory(matchScore, `Point awarded to ${player}`);
 
     const newScore = { ...matchScore };
     const opponent = player === 'player1' ? 'player2' : 'player1';
@@ -187,8 +218,16 @@ const UmpirePage: React.FC = () => {
   };
 
   const undoLastPoint = () => {
-    // Simple undo - in a real implementation, you'd maintain a history stack
-    console.log('Undo functionality would be implemented here');
+    if (scoreHistory.length === 0) return;
+
+    const lastEntry = scoreHistory[scoreHistory.length - 1];
+    setMatchScore(lastEntry.score);
+    
+    setScoreHistory(prev => prev.slice(0, -1));
+    setCanUndo(scoreHistory.length > 1);
+    
+    // Show confirmation message
+    console.log(`Undid: ${lastEntry.action}`);
   };
 
   const handleEndMatch = () => {
@@ -209,6 +248,8 @@ const UmpirePage: React.FC = () => {
         loadMatches();
         setActiveMatch(null);
         setMatchScore(null);
+        setScoreHistory([]);
+        setCanUndo(false);
         setShowEndMatchConfirmation(false);
       }
     }
@@ -490,6 +531,7 @@ const UmpirePage: React.FC = () => {
         <div className="umpire-action-buttons">
           <button
             onClick={undoLastPoint}
+            disabled={!canUndo}
             className="umpire-action-btn undo"
           >
             <RotateCcw size={20} />

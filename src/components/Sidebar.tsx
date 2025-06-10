@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   Home, 
   Trophy, 
@@ -14,28 +15,19 @@ import {
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 
-interface SidebarProps {
-  currentPage: string;
-  onPageChange: (page: string) => void;
-}
-
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
+const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const location = useLocation();
 
   const navigationItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'matches', label: 'My Matches', icon: Swords },
-    { id: 'tournaments', label: 'Tournaments', icon: Trophy },
-    { id: 'umpire', label: 'Live Scoring', icon: Gavel },
-    { id: 'rankings', label: 'Ratings & Rankings', icon: BarChart3 },
-    { id: 'profile', label: 'Profile', icon: Settings },
+    { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },
+    { id: 'matches', label: 'My Matches', icon: Swords, path: '/matches' },
+    { id: 'tournaments', label: 'Tournaments', icon: Trophy, path: '/tournaments' },
+    { id: 'umpire', label: 'Live Scoring', icon: Gavel, path: '/umpire' },
+    { id: 'rankings', label: 'Ratings & Rankings', icon: BarChart3, path: '/rankings' },
+    { id: 'profile', label: 'Profile', icon: Settings, path: '/profile' },
   ];
-
-  const handleNavigation = (pageId: string) => {
-    onPageChange(pageId);
-    setIsMobileOpen(false);
-  };
 
   return (
     <>
@@ -91,13 +83,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
           <ul className="sidebar-nav-list">
             {navigationItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentPage === item.id;
+              const isActive = location.pathname === item.path;
               
               return (
                 <li key={item.id}>
-                  <button
-                    onClick={() => handleNavigation(item.id)}
+                  <Link
+                    to={item.path}
                     className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+                    onClick={() => setIsMobileOpen(false)}
                     aria-current={isActive ? 'page' : undefined}
                   >
                     <Icon size={20} className="sidebar-nav-icon" />
@@ -105,7 +98,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
                       <span className="sidebar-nav-label">{item.label}</span>
                     )}
                     {isActive && <div className="sidebar-nav-indicator" />}
-                  </button>
+                  </Link>
                 </li>
               );
             })}

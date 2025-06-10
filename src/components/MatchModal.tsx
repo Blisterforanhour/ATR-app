@@ -5,16 +5,20 @@ import { UserService } from '../services/UserService';
 import { MatchService } from '../services/MatchService';
 import { User as UserType } from '../types';
 
-interface MatchCreateFormProps {
+interface MatchModalProps {
+  isOpen: boolean;
   onClose: () => void;
   onMatchCreated: () => void;
   preselectedPlayer?: UserType | null;
+  mode?: 'create' | 'challenge';
 }
 
-const MatchCreateForm: React.FC<MatchCreateFormProps> = ({ 
+const MatchModal: React.FC<MatchModalProps> = ({ 
+  isOpen,
   onClose, 
   onMatchCreated, 
-  preselectedPlayer 
+  preselectedPlayer,
+  mode = 'create'
 }) => {
   const { user } = useAuth();
   const [availablePlayers, setAvailablePlayers] = useState<UserType[]>([]);
@@ -37,8 +41,10 @@ const MatchCreateForm: React.FC<MatchCreateFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    loadAvailablePlayers();
-  }, [user]);
+    if (isOpen) {
+      loadAvailablePlayers();
+    }
+  }, [user, isOpen]);
 
   useEffect(() => {
     filterPlayers();
@@ -145,11 +151,23 @@ const MatchCreateForm: React.FC<MatchCreateFormProps> = ({
     }
   };
 
+  const getTitle = () => {
+    return mode === 'challenge' 
+      ? `Create Match with ${selectedPlayer?.name}`
+      : 'Create New Match';
+  };
+
+  const getSubmitText = () => {
+    return mode === 'challenge' ? 'Send Challenge' : 'Create Match';
+  };
+
   // Generate default date and time (tomorrow at 10 AM)
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const defaultDate = tomorrow.toISOString().slice(0, 10);
   const defaultTime = '10:00';
+
+  if (!isOpen) return null;
 
   return (
     <div className="modal-backdrop fade-in">
@@ -161,7 +179,7 @@ const MatchCreateForm: React.FC<MatchCreateFormProps> = ({
         <div className="text-center mb-6">
           <Target size={48} className="mx-auto mb-4" style={{ color: 'var(--quantum-cyan)' }} />
           <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-standard)' }}>
-            Create New Match
+            {getTitle()}
           </h2>
           <p style={{ color: 'var(--text-subtle)' }}>
             Schedule a competitive match with another player
@@ -169,27 +187,27 @@ const MatchCreateForm: React.FC<MatchCreateFormProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Player Selection */}
-          <div className="form-group">
-            <label className="form-label">
-              <Users size={16} className="inline mr-2" />
-              Select Opponent
-            </label>
-            
-            {selectedPlayer ? (
-              <div className="match-selected-player">
-                <div className="match-player-info">
-                  <div className="player-avatar">
-                    {getInitials(selectedPlayer.name)}
-                  </div>
-                  <div className="match-player-details">
-                    <div className="match-player-name">{selectedPlayer.name}</div>
-                    <div className={`rating-badge ${getRatingClass(selectedPlayer.skillLevel)}`}>
-                      {selectedPlayer.skillLevel} • Rating: {selectedPlayer.rating}
+          {/* Player Selection - Only show for create mode */}
+          {mode === 'create' && (
+            <div className="form-group">
+              <label className="form-label">
+                <Users size={16} className="inline mr-2" />
+                Select Opponent
+              </label>
+              
+              {selectedPlayer ? (
+                <div className="match-selected-player">
+                  <div className="match-player-info">
+                    <div className="player-avatar">
+                      {getInitials(selectedPlayer.name)}
+                    </div>
+                    <div className="match-player-details">
+                      <div className="match-player-name">{selectedPlayer.name}</div>
+                      <div className={`rating-badge ${getRatingClass(selectedPlayer.skillLevel)}`}>
+                        {selectedPlayer.skillLevel} • Rating: {selectedPlayer.rating}
+                      </div>
                     </div>
                   </div>
-                </div>
-                {!preselectedPlayer && (
                   <button
                     type="button"
                     onClick={() => {
@@ -200,59 +218,59 @@ const MatchCreateForm: React.FC<MatchCreateFormProps> = ({
                   >
                     Change
                   </button>
-                )}
-              </div>
-            ) : (
-              <div className="match-player-search">
-                <div className="search-container">
-                  <Search size={20} className="search-icon" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="form-input search-input"
-                    placeholder="Search players by name, skill level, or location..."
-                  />
                 </div>
-                
-                <div className="match-players-grid">
-                  {filteredPlayers.map((player) => (
-                    <div
-                      key={player.id}
-                      onClick={() => {
-                        setSelectedPlayer(player);
-                        setShowPlayerSearch(false);
-                      }}
-                      className="match-player-card"
-                    >
-                      <div className="player-avatar">
-                        {getInitials(player.name)}
-                      </div>
-                      <div className="match-player-details">
-                        <div className="match-player-name">{player.name}</div>
-                        <div className={`rating-badge ${getRatingClass(player.skillLevel)}`}>
-                          {player.skillLevel}
-                        </div>
-                        <div className="match-player-stats">
-                          <span>Rating: {player.rating}</span>
-                          <span>•</span>
-                          <span>{player.matchesPlayed} matches</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                {filteredPlayers.length === 0 && (
-                  <div className="match-no-players">
-                    <User size={32} style={{ color: 'var(--text-muted)' }} />
-                    <p>No players found matching your search.</p>
+              ) : (
+                <div className="match-player-search">
+                  <div className="search-container">
+                    <Search size={20} className="search-icon" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="form-input search-input"
+                      placeholder="Search players by name, skill level, or location..."
+                    />
                   </div>
-                )}
-              </div>
-            )}
-            {errors.player && <p className="text-error-pink text-sm mt-1">{errors.player}</p>}
-          </div>
+                  
+                  <div className="match-players-grid">
+                    {filteredPlayers.map((player) => (
+                      <div
+                        key={player.id}
+                        onClick={() => {
+                          setSelectedPlayer(player);
+                          setShowPlayerSearch(false);
+                        }}
+                        className="match-player-card"
+                      >
+                        <div className="player-avatar">
+                          {getInitials(player.name)}
+                        </div>
+                        <div className="match-player-details">
+                          <div className="match-player-name">{player.name}</div>
+                          <div className={`rating-badge ${getRatingClass(player.skillLevel)}`}>
+                            {player.skillLevel}
+                          </div>
+                          <div className="match-player-stats">
+                            <span>Rating: {player.rating}</span>
+                            <span>•</span>
+                            <span>{player.matchesPlayed} matches</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {filteredPlayers.length === 0 && (
+                    <div className="match-no-players">
+                      <User size={32} style={{ color: 'var(--text-muted)' }} />
+                      <p>No players found matching your search.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              {errors.player && <p className="text-error-pink text-sm mt-1">{errors.player}</p>}
+            </div>
+          )}
 
           {/* Date and Time */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -430,7 +448,7 @@ const MatchCreateForm: React.FC<MatchCreateFormProps> = ({
               ) : (
                 <>
                   <Target size={16} />
-                  Create Match
+                  {getSubmitText()}
                 </>
               )}
             </button>
@@ -441,4 +459,4 @@ const MatchCreateForm: React.FC<MatchCreateFormProps> = ({
   );
 };
 
-export default MatchCreateForm;
+export default MatchModal;

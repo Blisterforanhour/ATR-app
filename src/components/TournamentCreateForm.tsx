@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar, MapPin, Users, Trophy, User } from 'lucide-react';
+import { X, Calendar, MapPin, Users, Trophy, User, Award } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { TournamentService } from '../services/TournamentService';
 import { UserService } from '../services/UserService';
@@ -31,6 +31,33 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
 
   // Get available umpires (all users for now)
   const availableUmpires = UserService.getAllPlayers();
+
+  // Tournament format options with availability status
+  const tournamentFormats = [
+    {
+      value: 'single_elimination',
+      label: 'Single Elimination',
+      description: 'Traditional knockout format - lose once and you\'re out',
+      available: true,
+      icon: Trophy
+    },
+    {
+      value: 'double_elimination',
+      label: 'Double Elimination',
+      description: 'Two-loss elimination format - more forgiving for players',
+      available: false,
+      comingSoon: true,
+      icon: Award
+    },
+    {
+      value: 'round_robin',
+      label: 'Round Robin',
+      description: 'Everyone plays everyone - fair and comprehensive',
+      available: false,
+      comingSoon: true,
+      icon: Users
+    }
+  ] as const;
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -243,46 +270,72 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
               )}
             </div>
 
-            {/* Format and Participants */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-group">
-                <label htmlFor="format" className="form-label">
-                  Tournament Format
-                </label>
-                <select
-                  id="format"
-                  value={formData.format}
-                  onChange={(e) => handleInputChange('format', e.target.value)}
-                  className="form-select"
-                  required
-                >
-                  <option value="single_elimination">Single Elimination</option>
-                  <option value="double_elimination">Double Elimination</option>
-                  <option value="round_robin">Round Robin</option>
-                </select>
+            {/* Enhanced Format Selection */}
+            <div className="form-group">
+              <label className="form-label">Tournament Format</label>
+              <div className="format-options-grid">
+                {tournamentFormats.map((format) => {
+                  const Icon = format.icon;
+                  return (
+                    <label
+                      key={format.value}
+                      className={`format-option ${
+                        formData.format === format.value ? 'selected' : ''
+                      } ${!format.available ? 'disabled' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="format"
+                        value={format.value}
+                        checked={formData.format === format.value}
+                        onChange={(e) => format.available && handleInputChange('format', e.target.value)}
+                        disabled={!format.available}
+                        className="format-radio"
+                      />
+                      
+                      <div className="format-content">
+                        <div className="format-header">
+                          <Icon size={20} className="format-icon" />
+                          <span className="format-name">{format.label}</span>
+                          {format.comingSoon && (
+                            <span className="coming-soon-badge">Coming Soon</span>
+                          )}
+                        </div>
+                        <p className="format-description">{format.description}</p>
+                      </div>
+                      
+                      {!format.available && (
+                        <div className="format-overlay">
+                          <span className="overlay-text">Available in future update</span>
+                        </div>
+                      )}
+                    </label>
+                  );
+                })}
               </div>
+            </div>
 
-              <div className="form-group">
-                <label htmlFor="maxParticipants" className="form-label">
-                  <Users size={16} className="inline mr-2" />
-                  Max Participants
-                </label>
-                <select
-                  id="maxParticipants"
-                  value={formData.maxParticipants}
-                  onChange={(e) => handleInputChange('maxParticipants', parseInt(e.target.value))}
-                  className="form-select"
-                  required
-                >
-                  <option value={4}>4 Players</option>
-                  <option value={8}>8 Players</option>
-                  <option value={16}>16 Players</option>
-                  <option value={32}>32 Players</option>
-                  <option value={64}>64 Players</option>
-                  <option value={128}>128 Players</option>
-                </select>
-                {errors.maxParticipants && <p className="text-error-pink text-sm mt-1">{errors.maxParticipants}</p>}
-              </div>
+            {/* Participants */}
+            <div className="form-group">
+              <label htmlFor="maxParticipants" className="form-label">
+                <Users size={16} className="inline mr-2" />
+                Max Participants
+              </label>
+              <select
+                id="maxParticipants"
+                value={formData.maxParticipants}
+                onChange={(e) => handleInputChange('maxParticipants', parseInt(e.target.value))}
+                className="form-select"
+                required
+              >
+                <option value={4}>4 Players</option>
+                <option value={8}>8 Players</option>
+                <option value={16}>16 Players</option>
+                <option value={32}>32 Players</option>
+                <option value={64}>64 Players</option>
+                <option value={128}>128 Players</option>
+              </select>
+              {errors.maxParticipants && <p className="text-error-pink text-sm mt-1">{errors.maxParticipants}</p>}
             </div>
 
             {/* Location */}

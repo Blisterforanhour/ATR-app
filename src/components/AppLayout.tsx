@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import LoginPage from './LoginPage';
@@ -13,7 +14,6 @@ import Sidebar from './Sidebar';
 
 const AppContent: React.FC = () => {
   const { user, isLoading } = useAuth();
-  const [currentPage, setCurrentPage] = useState('dashboard');
 
   if (isLoading) {
     return (
@@ -33,31 +33,24 @@ const AppContent: React.FC = () => {
     return <OnboardingPage />;
   }
 
-  const renderCurrentPage = () => {
-    switch (currentPage) {
-      case 'tournaments':
-        return <TournamentPage />;
-      case 'matches':
-        return <MatchesPage />;
-      case 'profile':
-        return <ProfilePage />;
-      case 'rankings':
-        return <RankingsPage />;
-      case 'umpire':
-        return <UmpirePage />;
-      default:
-        return <Dashboard />;
-    }
-  };
-
   return (
     <div className="app-layout">
       {/* Sidebar Navigation with Theme Toggle */}
-      <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} />
+      <Sidebar />
 
-      {/* Main Content */}
+      {/* Main Content with Router */}
       <main className="app-main">
-        {renderCurrentPage()}
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/matches" element={<MatchesPage />} />
+          <Route path="/tournaments" element={<TournamentPage />} />
+          <Route path="/umpire" element={<UmpirePage />} />
+          <Route path="/rankings" element={<RankingsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          {/* Catch-all route for unknown paths */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
       </main>
     </div>
   );

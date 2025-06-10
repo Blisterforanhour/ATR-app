@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Trophy, Calendar, Filter } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { TournamentService } from '../services/TournamentService';
-import { UserService } from '../services/UserService';
 import { Tournament } from '../types';
 import TournamentCard from './TournamentCard';
 import TournamentCreateForm from './TournamentCreateForm';
@@ -17,9 +16,6 @@ const TournamentPage: React.FC = () => {
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
 
   useEffect(() => {
-    // Initialize mock data for both services
-    UserService.initializeMockData();
-    TournamentService.initializeMockData();
     loadTournaments();
   }, []);
 
