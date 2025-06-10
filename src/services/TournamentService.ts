@@ -93,8 +93,11 @@ export class TournamentService {
       return false;
     }
 
-    // Seed players based on rating
-    const players = participants.map(p => UserService.getPlayerById(p.playerId)).filter(Boolean) as User[];
+    // Get actual player objects and seed them based on rating
+    const players = participants
+      .map(p => UserService.getPlayerById(p.playerId))
+      .filter(Boolean) as User[];
+    
     players.sort((a, b) => b.rating - a.rating);
 
     // Update participants with seeding
@@ -109,10 +112,19 @@ export class TournamentService {
     });
     localStorage.setItem(this.PARTICIPANTS_KEY, JSON.stringify(updatedParticipants));
 
+    // Clear any existing matches for this tournament
+    const allMatches = this.getAllTournamentMatches();
+    const filteredMatches = allMatches.filter(m => m.tournamentId !== tournamentId);
+    
     // Generate matches based on format
+    let newMatches: TournamentMatch[] = [];
     if (tournament.format === 'single_elimination') {
-      this.generateSingleEliminationBracket(tournament, players);
+      newMatches = this.generateSingleEliminationBracket(tournament, players);
     }
+
+    // Save the new matches
+    const updatedMatches = [...filteredMatches, ...newMatches];
+    localStorage.setItem(this.TOURNAMENT_MATCHES_KEY, JSON.stringify(updatedMatches));
 
     // Update tournament status
     tournament.status = 'in_progress';
@@ -121,14 +133,28 @@ export class TournamentService {
     return true;
   }
 
-  private static generateSingleEliminationBracket(tournament: Tournament, players: User[]): void {
+  private static generateSingleEliminationBracket(tournament: Tournament, players: User[]): TournamentMatch[] {
     const matches: TournamentMatch[] = [];
-    const roundSize = Math.pow(2, Math.ceil(Math.log2(players.length)));
     
-    // First round matches
-    for (let i = 0; i < roundSize / 2; i++) {
-      const player1 = players[i * 2];
-      const player2 = players[i * 2 + 1];
+    // Calculate the bracket size (next power of 2)
+    const bracketSize = Math.pow(2, Math.ceil(Math.log2(players.length)));
+    const totalRounds = Math.ceil(Math.log2(bracketSize));
+    
+    console.log(`Generating bracket for ${players.length} players, bracket size: ${bracketSize}, rounds: ${totalRounds}`);
+
+    // Create a seeded bracket array
+    const bracket: (User | null)[] = new Array(bracketSize).fill(null);
+    
+    // Place players in bracket using standard tournament seeding
+    for (let i = 0; i < players.length; i++) {
+      bracket[i] = players[i];
+    }
+
+    // Generate first round matches
+    const firstRoundMatches = bracketSize / 2;
+    for (let i = 0; i < firstRoundMatches; i++) {
+      const player1 = bracket[i * 2];
+      const player2 = bracket[i * 2 + 1];
 
       const match: TournamentMatch = {
         id: this.generateId('match'),
@@ -142,11 +168,21 @@ export class TournamentService {
         umpireId: tournament.umpireId,
       };
 
+      // If one player is missing (bye), automatically advance the other
+      if (player1 && !player2) {
+        match.winnerId = player1.id;
+        match.status = 'completed';
+        match.score = 'Bye';
+      } else if (!player1 && player2) {
+        match.winnerId = player2.id;
+        match.status = 'completed';
+        match.score = 'Bye';
+      }
+
       matches.push(match);
     }
 
     // Generate subsequent rounds (empty matches to be filled as tournament progresses)
-    const totalRounds = Math.ceil(Math.log2(roundSize));
     for (let round = 2; round <= totalRounds; round++) {
       const matchesInRound = Math.pow(2, totalRounds - round);
       for (let i = 0; i < matchesInRound; i++) {
@@ -163,9 +199,8 @@ export class TournamentService {
       }
     }
 
-    const allMatches = this.getAllTournamentMatches();
-    allMatches.push(...matches);
-    localStorage.setItem(this.TOURNAMENT_MATCHES_KEY, JSON.stringify(allMatches));
+    console.log(`Generated ${matches.length} matches for tournament ${tournament.name}`);
+    return matches;
   }
 
   // Match Management
@@ -355,7 +390,7 @@ export class TournamentService {
         registrationDeadline: tournament3RegDeadline.toISOString(),
         startDate: tournament3Start.toISOString(),
         endDate: tournament3End.toISOString(),
-        format: 'round_robin',
+        format: 'single_elimination',
         location: 'Community Tennis Courts, Sandton',
         maxParticipants: 8,
         umpireId: 'mock_4',
@@ -385,7 +420,7 @@ export class TournamentService {
         registrationDeadline: tournament5RegDeadline.toISOString(),
         startDate: tournament5Start.toISOString(),
         endDate: tournament5End.toISOString(),
-        format: 'double_elimination',
+        format: 'single_elimination',
         location: 'Spring Valley Tennis Club',
         maxParticipants: 16,
         umpireId: 'mock_1',
@@ -442,14 +477,14 @@ export class TournamentService {
       })),
 
       // Tournament 3 participants (Beginner's) - Full 8/8
-      { id: 'part_3_1', tournamentId: 'tournament_3', playerId: 'mock_3', registeredAt: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString() },
-      { id: 'part_3_2', tournamentId: 'tournament_3', playerId: 'mock_6', registeredAt: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString() },
-      { id: 'part_3_3', tournamentId: 'tournament_3', playerId: 'mock_7', registeredAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString() },
-      { id: 'part_3_4', tournamentId: 'tournament_3', playerId: 'mock_8', registeredAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString() },
-      { id: 'part_3_5', tournamentId: 'tournament_3', playerId: 'mock_9', registeredAt: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString() },
-      { id: 'part_3_6', tournamentId: 'tournament_3', playerId: 'mock_10', registeredAt: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString() },
-      { id: 'part_3_7', tournamentId: 'tournament_3', playerId: 'mock_11', registeredAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-      { id: 'part_3_8', tournamentId: 'tournament_3', playerId: 'mock_12', registeredAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_3_1', tournamentId: 'tournament_3', playerId: 'mock_3', registeredAt: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString(), seed: 1 },
+      { id: 'part_3_2', tournamentId: 'tournament_3', playerId: 'mock_6', registeredAt: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString(), seed: 2 },
+      { id: 'part_3_3', tournamentId: 'tournament_3', playerId: 'mock_7', registeredAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), seed: 3 },
+      { id: 'part_3_4', tournamentId: 'tournament_3', playerId: 'mock_8', registeredAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), seed: 4 },
+      { id: 'part_3_5', tournamentId: 'tournament_3', playerId: 'mock_9', registeredAt: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(), seed: 5 },
+      { id: 'part_3_6', tournamentId: 'tournament_3', playerId: 'mock_10', registeredAt: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(), seed: 6 },
+      { id: 'part_3_7', tournamentId: 'tournament_3', playerId: 'mock_11', registeredAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(), seed: 7 },
+      { id: 'part_3_8', tournamentId: 'tournament_3', playerId: 'mock_12', registeredAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(), seed: 8 },
 
       // Tournament 4 participants (Elite Masters) - Full 16/16 with bracket generated
       ...Array.from({ length: 16 }, (_, i) => ({
