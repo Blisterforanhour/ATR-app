@@ -1,92 +1,213 @@
 import React, { useState } from 'react';
-import { Mail, Zap, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [errors, setErrors] = useState<{email?: string; password?: string}>({});
   const { login } = useAuth();
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleInputChange = (field: 'email' | 'password', value: string) => {
+    if (field === 'email') {
+      setEmail(value);
+      if (errors.email) {
+        setErrors(prev => ({ ...prev, email: undefined }));
+      }
+    } else {
+      setPassword(value);
+      if (errors.password) {
+        setErrors(prev => ({ ...prev, password: undefined }));
+      }
+    }
+    if (message) setMessage('');
+  };
+
+  const validateForm = () => {
+    const newErrors: {email?: string; password?: string} = {};
+    
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!validateEmail(email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    
+    if (!password.trim()) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    
+    if (!validateForm()) return;
 
     setIsLoading(true);
-    setMessage('Magic link sent! Redirecting...');
+    setMessage('');
 
     try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
       await login(email);
+      setMessage('Login successful! Redirecting...');
     } catch (error) {
-      setMessage('Login failed. Please try again.');
+      setMessage('Invalid credentials. Please try again.');
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="login-page">
-      <div className="pulse-glow">
-        <div className="hero-border">
-          <div className="login-container">
-            <div className="login-hero">
-              <div className="float login-icon">
-                <Zap size={48} className="mx-auto text-quantum-cyan" style={{ color: 'var(--quantum-cyan)' }} />
+    <div className="login-page-modern">
+      <div className="login-container-modern">
+        <div className="login-card">
+          {/* Logo Section */}
+          <div className="login-header">
+            <div className="login-logo">
+              <div className="logo-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.1"/>
+                  <path d="M24 8L32 16L24 24L16 16L24 8Z" fill="currentColor"/>
+                  <path d="M16 24L24 32L32 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
-              <h1 className="login-title">
-                Africa Tennis
-              </h1>
-              <p className="login-subtitle">
-                Enter the future of competitive tennis
-              </p>
+              <h1 className="logo-text">Africa Tennis</h1>
             </div>
+            <p className="login-subtitle">Welcome back to your tennis journey</p>
+          </div>
 
-            <form onSubmit={handleSubmit} className="login-form">
-              <div className="login-form-group">
-                <label htmlFor="email" className="login-form-label">
-                  Email Address
-                </label>
-                <div className="login-input-container">
-                  <Mail size={20} className="login-input-icon" />
-                  <input
-                    type="email"
-                    id="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="login-input"
-                    placeholder="your@email.com"
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
+          {/* Form Section */}
+          <form onSubmit={handleSubmit} className="login-form-modern" noValidate>
+            {/* Email Field */}
+            <div className="form-field">
+              <label htmlFor="email" className="form-label-modern">
+                Email Address
+              </label>
+              <div className="input-container">
+                <Mail size={20} className="input-icon" />
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  className={`form-input-modern ${errors.email ? 'error' : ''}`}
+                  placeholder="Enter your email"
+                  required
+                  disabled={isLoading}
+                  autoComplete="email"
+                />
               </div>
-
-              <button
-                type="submit"
-                disabled={isLoading || !email.trim()}
-                className="login-submit-btn"
-              >
-                {isLoading ? (
-                  <div className="loading-spinner w-5 h-5"></div>
-                ) : (
-                  <>
-                    <span>Enter the Arena</span>
-                    <ArrowRight size={18} />
-                  </>
-                )}
-              </button>
-
-              {message && (
-                <p className="login-message">
-                  {message}
-                </p>
+              {errors.email && (
+                <span className="error-message" role="alert">
+                  {errors.email}
+                </span>
               )}
-            </form>
-
-            <div className="login-footer">
-              <p className="login-footer-text">
-                Passwordless authentication • Secure • Instant
-              </p>
             </div>
+
+            {/* Password Field */}
+            <div className="form-field">
+              <label htmlFor="password" className="form-label-modern">
+                Password
+              </label>
+              <div className="input-container">
+                <Lock size={20} className="input-icon" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  value={password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  className={`form-input-modern ${errors.password ? 'error' : ''}`}
+                  placeholder="Enter your password"
+                  required
+                  disabled={isLoading}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="password-toggle"
+                  disabled={isLoading}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {errors.password && (
+                <span className="error-message" role="alert">
+                  {errors.password}
+                </span>
+              )}
+            </div>
+
+            {/* Remember Me & Forgot Password */}
+            <div className="form-options">
+              <label className="checkbox-container">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  disabled={isLoading}
+                />
+                <span className="checkmark"></span>
+                <span className="checkbox-label">Remember me</span>
+              </label>
+              <button
+                type="button"
+                className="forgot-password-link"
+                disabled={isLoading}
+              >
+                Forgot Password?
+              </button>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading || !email.trim() || !password.trim()}
+              className="login-button-modern"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 size={20} className="loading-icon" />
+                  <span>Signing In...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight size={20} />
+                </>
+              )}
+            </button>
+
+            {/* Message Display */}
+            {message && (
+              <div className={`message ${message.includes('successful') ? 'success' : 'error'}`} role="alert">
+                {message}
+              </div>
+            )}
+          </form>
+
+          {/* Create Account Section */}
+          <div className="signup-section">
+            <p className="signup-text">
+              Don't have an account?{' '}
+              <button className="signup-link" disabled={isLoading}>
+                Create Account
+              </button>
+            </p>
           </div>
         </div>
       </div>

@@ -4,6 +4,12 @@
   --quantum-cyan: #40dcff;
   --nebula-purple: #aa55ff;
   
+  /* Brand Colors */
+  --brand-forest: #4ade80;        /* Brighter green for dark mode */
+  --brand-forest-dark: #22c55e;   /* Darker variant */
+  --brand-sand: #fbbf24;          /* Warm yellow for dark mode */
+  --brand-sand-light: #fcd34d;    /* Lighter variant */
+  
   /* Accent Colors */
   --success-green: #00ffaa;
   --error-pink: #ff3366;
@@ -22,8 +28,35 @@
   --text-muted: #6b7280;
   --text-inverse: #0a0e17;
   
+  /* Login Specific Colors */
+  --login-bg: linear-gradient(135deg, #0a0e17 0%, #111827 50%, #1a1f2e 100%);
+  --login-pattern: radial-gradient(circle at 75% 25%, #4ade80 0%, transparent 50%);
+  --login-card-bg: rgba(26, 31, 46, 0.95);
+  --login-border: rgba(78, 222, 128, 0.15);
+  --login-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(78, 222, 128, 0.1);
+  
+  --login-text-primary: #e9ecef;
+  --login-text-secondary: #a0a8b4;
+  --login-text-muted: #6b7280;
+  
+  --login-input-bg: rgba(17, 24, 39, 0.8);
+  --login-input-border: rgba(78, 222, 128, 0.2);
+  --login-focus-ring: rgba(78, 222, 128, 0.2);
+  --login-hover-bg: rgba(78, 222, 128, 0.1);
+  
+  --login-error: #ff3366;
+  --login-error-bg: rgba(255, 51, 102, 0.1);
+  --login-error-border: rgba(255, 51, 102, 0.3);
+  --login-error-ring: rgba(255, 51, 102, 0.2);
+  
+  --login-success: #00ffaa;
+  --login-success-bg: rgba(0, 255, 170, 0.1);
+  --login-success-border: rgba(0, 255, 170, 0.3);
+  
+  --login-disabled: #374151;
+  
   /* Border Colors */
-  --border-primary: rgba(64, 220, 255, 0.3);
+  --border-primary: rgba(78, 222, 128, 0.3);
   --border-secondary: rgba(170, 85, 255, 0.3);
   --border-subtle: rgba(255, 255, 255, 0.1);
   --border-muted: rgba(255, 255, 255, 0.05);
@@ -40,23 +73,23 @@
   --shadow-elevated: rgba(0, 0, 0, 0.8);
   
   /* Gradient Stops */
-  --gradient-primary: linear-gradient(135deg, var(--quantum-cyan), var(--nebula-purple));
+  --gradient-primary: linear-gradient(135deg, var(--brand-forest), var(--brand-forest-dark));
   --gradient-success: linear-gradient(135deg, var(--success-green), var(--quantum-cyan));
   --gradient-error: linear-gradient(135deg, var(--error-pink), var(--warning-orange));
-  --gradient-hero: linear-gradient(135deg, var(--quantum-cyan), var(--nebula-purple), var(--accent-yellow), var(--success-green));
+  --gradient-hero: linear-gradient(135deg, var(--brand-forest), var(--nebula-purple), var(--accent-yellow), var(--success-green));
   
   /* Interactive States */
   --hover-bg: rgba(255, 255, 255, 0.05);
   --active-bg: rgba(255, 255, 255, 0.1);
-  --focus-ring: var(--quantum-cyan);
+  --focus-ring: var(--brand-forest);
   
   /* Component-specific */
   --input-bg: rgba(17, 24, 39, 0.8);
   --input-border: var(--border-subtle);
-  --input-focus-border: var(--border-primary);
+  --input-focus-border: var(--brand-forest);
   
   --button-primary-bg: var(--gradient-primary);
-  --button-secondary-bg: rgba(170, 85, 255, 0.2);
+  --button-secondary-bg: rgba(78, 222, 128, 0.2);
   --button-danger-bg: var(--gradient-error);
   
   --modal-backdrop: rgba(10, 14, 23, 0.8);
