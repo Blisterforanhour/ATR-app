@@ -1,0 +1,372 @@
+import React, { useState } from 'react';
+import { X, Calendar, MapPin, Users, Trophy, User } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { TournamentService } from '../services/TournamentService';
+import { UserService } from '../services/UserService';
+import { Tournament } from '../types';
+import MultiSelectCalendar from './MultiSelectCalendar';
+
+interface TournamentCreateFormProps {
+  onClose: () => void;
+  onTournamentCreated: (tournament: Tournament) => void;
+}
+
+const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, onTournamentCreated }) => {
+  const { user } = useAuth();
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    registrationDeadline: null as Date | null,
+    startDate: null as Date | null,
+    endDate: null as Date | null,
+    format: 'single_elimination' as const,
+    location: '',
+    maxParticipants: 16,
+    umpireId: '',
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Get available umpires (all users for now)
+  const availableUmpires = UserService.getAllPlayers();
+
+  const handleInputChange = (field: string, value: string | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleDateChange = (type: 'registration' | 'start' | 'end', date: Date) => {
+    const fieldMap = {
+      registration: 'registrationDeadline',
+      start: 'startDate',
+      end: 'endDate'
+    };
+    
+    setFormData(prev => ({ ...prev, [fieldMap[type]]: date }));
+    
+    // Clear related errors
+    if (errors[fieldMap[type]]) {
+      setErrors(prev => ({ ...prev, [fieldMap[type]]: '' }));
+    }
+  };
+
+  const isPowerOfTwo = (n: number): boolean => {
+    return n > 0 && (n & (n - 1)) === 0;
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Tournament name is required';
+    }
+
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required';
+    }
+
+    if (!formData.registrationDeadline) {
+      newErrors.registrationDeadline = 'Registration deadline is required';
+    }
+
+    if (!formData.startDate) {
+      newErrors.startDate = 'Start date is required';
+    }
+
+    if (!formData.endDate) {
+      newErrors.endDate = 'End date is required';
+    }
+
+    if (formData.startDate && formData.endDate && formData.startDate >= formData.endDate) {
+      newErrors.endDate = 'End date must be after start date';
+    }
+
+    if (formData.registrationDeadline && formData.startDate && formData.registrationDeadline >= formData.startDate) {
+      newErrors.registrationDeadline = 'Registration deadline must be before start date';
+    }
+
+    if (!formData.location.trim()) {
+      newErrors.location = 'Location is required';
+    }
+
+    if (!formData.umpireId) {
+      newErrors.umpireId = 'Umpire selection is required';
+    }
+
+    if (formData.maxParticipants < 4 || formData.maxParticipants > 128) {
+      newErrors.maxParticipants = 'Participants must be between 4 and 128';
+    }
+
+    // Check if maxParticipants is a power of 2 for elimination formats
+    if (formData.format !== 'round_robin' && !isPowerOfTwo(formData.maxParticipants)) {
+      newErrors.maxParticipants = 'For elimination formats, participants must be a power of 2 (4, 8, 16, 32, 64, 128)';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user || !validateForm()) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const tournament = TournamentService.createTournament({
+        ...formData,
+        registrationDeadline: formData.registrationDeadline!.toISOString(),
+        startDate: formData.startDate!.toISOString(),
+        endDate: formData.endDate!.toISOString(),
+        organizerId: user.id,
+      });
+
+      onTournamentCreated(tournament);
+      onClose();
+    } catch (error) {
+      console.error('Failed to create tournament:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const formatDateTime = (date: Date | null) => {
+    if (!date) return 'Not selected';
+    return date.toLocaleString();
+  };
+
+  return (
+    <>
+      <div className="modal-backdrop fade-in">
+        <div className="modal modal-large scale-in">
+          <button onClick={onClose} className="modal-close">
+            <X size={20} />
+          </button>
+
+          <div className="text-center mb-6">
+            <Trophy size={48} className="mx-auto mb-4" style={{ color: 'var(--quantum-cyan)' }} />
+            <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-standard)' }}>
+              Create Tournament
+            </h2>
+            <p style={{ color: 'var(--text-subtle)' }}>
+              Set up a new tournament for players to compete
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Tournament Name */}
+            <div className="form-group">
+              <label htmlFor="name" className="form-label">
+                <Trophy size={16} className="inline mr-2" />
+                Tournament Name
+              </label>
+              <input
+                type="text"
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                className="form-input"
+                placeholder="e.g., Midrand Open 2025"
+                required
+              />
+              {errors.name && <p className="text-error-pink text-sm mt-1">{errors.name}</p>}
+            </div>
+
+            {/* Description */}
+            <div className="form-group">
+              <label htmlFor="description" className="form-label">
+                Description
+              </label>
+              <textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                className="form-textarea"
+                placeholder="Describe the tournament, rules, prizes, etc."
+                rows={3}
+                required
+              />
+              {errors.description && <p className="text-error-pink text-sm mt-1">{errors.description}</p>}
+            </div>
+
+            {/* Tournament Schedule */}
+            <div className="form-group">
+              <label className="form-label">
+                <Calendar size={16} className="inline mr-2" />
+                Tournament Schedule
+              </label>
+              
+              <div className="tournament-schedule-display">
+                <div className="schedule-item">
+                  <div className="schedule-label">Registration Deadline:</div>
+                  <div className="schedule-value">
+                    {formatDateTime(formData.registrationDeadline)}
+                  </div>
+                </div>
+                <div className="schedule-item">
+                  <div className="schedule-label">Tournament Start:</div>
+                  <div className="schedule-value">
+                    {formatDateTime(formData.startDate)}
+                  </div>
+                </div>
+                <div className="schedule-item">
+                  <div className="schedule-label">Tournament End:</div>
+                  <div className="schedule-value">
+                    {formatDateTime(formData.endDate)}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowCalendar(true)}
+                className="btn btn-secondary w-full mt-3"
+              >
+                <Calendar size={16} />
+                {formData.registrationDeadline || formData.startDate || formData.endDate 
+                  ? 'Modify Schedule' 
+                  : 'Set Tournament Schedule'
+                }
+              </button>
+
+              {(errors.registrationDeadline || errors.startDate || errors.endDate) && (
+                <div className="mt-2">
+                  {errors.registrationDeadline && <p className="text-error-pink text-sm">{errors.registrationDeadline}</p>}
+                  {errors.startDate && <p className="text-error-pink text-sm">{errors.startDate}</p>}
+                  {errors.endDate && <p className="text-error-pink text-sm">{errors.endDate}</p>}
+                </div>
+              )}
+            </div>
+
+            {/* Format and Participants */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-group">
+                <label htmlFor="format" className="form-label">
+                  Tournament Format
+                </label>
+                <select
+                  id="format"
+                  value={formData.format}
+                  onChange={(e) => handleInputChange('format', e.target.value)}
+                  className="form-select"
+                  required
+                >
+                  <option value="single_elimination">Single Elimination</option>
+                  <option value="double_elimination">Double Elimination</option>
+                  <option value="round_robin">Round Robin</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="maxParticipants" className="form-label">
+                  <Users size={16} className="inline mr-2" />
+                  Max Participants
+                </label>
+                <select
+                  id="maxParticipants"
+                  value={formData.maxParticipants}
+                  onChange={(e) => handleInputChange('maxParticipants', parseInt(e.target.value))}
+                  className="form-select"
+                  required
+                >
+                  <option value={4}>4 Players</option>
+                  <option value={8}>8 Players</option>
+                  <option value={16}>16 Players</option>
+                  <option value={32}>32 Players</option>
+                  <option value={64}>64 Players</option>
+                  <option value={128}>128 Players</option>
+                </select>
+                {errors.maxParticipants && <p className="text-error-pink text-sm mt-1">{errors.maxParticipants}</p>}
+              </div>
+            </div>
+
+            {/* Location */}
+            <div className="form-group">
+              <label htmlFor="location" className="form-label">
+                <MapPin size={16} className="inline mr-2" />
+                Venue/Location
+              </label>
+              <input
+                type="text"
+                id="location"
+                value={formData.location}
+                onChange={(e) => handleInputChange('location', e.target.value)}
+                className="form-input"
+                placeholder="Tennis club or court location"
+                required
+              />
+              {errors.location && <p className="text-error-pink text-sm mt-1">{errors.location}</p>}
+            </div>
+
+            {/* Umpire Selection */}
+            <div className="form-group">
+              <label htmlFor="umpireId" className="form-label">
+                <User size={16} className="inline mr-2" />
+                Tournament Umpire
+              </label>
+              <select
+                id="umpireId"
+                value={formData.umpireId}
+                onChange={(e) => handleInputChange('umpireId', e.target.value)}
+                className="form-select"
+                required
+              >
+                <option value="">Select an umpire</option>
+                {availableUmpires.map((umpire) => (
+                  <option key={umpire.id} value={umpire.id}>
+                    {umpire.name} (Rating: {umpire.rating})
+                  </option>
+                ))}
+              </select>
+              {errors.umpireId && <p className="text-error-pink text-sm mt-1">{errors.umpireId}</p>}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn btn-ghost flex-1"
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="btn btn-primary btn-glare flex-1"
+              >
+                {isSubmitting ? (
+                  <div className="loading-spinner w-5 h-5"></div>
+                ) : (
+                  <>
+                    <Trophy size={16} />
+                    Create Tournament
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {/* Multi-Select Calendar Modal */}
+      {showCalendar && (
+        <MultiSelectCalendar
+          registrationDeadline={formData.registrationDeadline}
+          startDate={formData.startDate}
+          endDate={formData.endDate}
+          onDateChange={handleDateChange}
+          onClose={() => setShowCalendar(false)}
+        />
+      )}
+    </>
+  );
+};
+
+export default TournamentCreateForm;
