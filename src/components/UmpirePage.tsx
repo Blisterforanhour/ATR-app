@@ -47,6 +47,7 @@ const UmpirePage: React.FC = () => {
   const [canUndo, setCanUndo] = useState(false);
   const [showStartConfirmation, setShowStartConfirmation] = useState(false);
   const [showEndMatchConfirmation, setShowEndMatchConfirmation] = useState(false);
+  const [tournamentToStart, setTournamentToStart] = useState<Tournament | null>(null);
 
   useEffect(() => {
     loadTournaments();
@@ -120,14 +121,45 @@ const UmpirePage: React.FC = () => {
     }
   };
 
+  const handleStartTournamentClick = (tournament: Tournament) => {
+    setTournamentToStart(tournament);
+    setShowStartConfirmation(true);
+  };
+
   const handleStartTournament = () => {
-    if (selectedTournament) {
-      const success = TournamentService.generateBracket(selectedTournament.id);
+    if (tournamentToStart) {
+      console.log('Starting tournament:', tournamentToStart.name);
+      
+      // Close registration and generate bracket
+      const success = TournamentService.closeRegistration(tournamentToStart.id);
       if (success) {
-        loadTournaments();
-        loadMatches();
-        setShowStartConfirmation(false);
+        // Generate the bracket
+        const bracketGenerated = TournamentService.generateBracket(tournamentToStart.id);
+        if (bracketGenerated) {
+          console.log('Tournament started and bracket generated successfully');
+          
+          // Update the selected tournament if it's the one we just started
+          if (selectedTournament?.id === tournamentToStart.id) {
+            const updatedTournament = TournamentService.getTournamentById(tournamentToStart.id);
+            if (updatedTournament) {
+              setSelectedTournament(updatedTournament);
+            }
+          }
+          
+          // Reload tournaments and matches
+          loadTournaments();
+          loadMatches();
+        } else {
+          console.error('Failed to generate bracket');
+          alert('Failed to generate tournament bracket. Please ensure there are enough participants.');
+        }
+      } else {
+        console.error('Failed to close registration');
+        alert('Failed to start tournament. Please try again.');
       }
+      
+      setShowStartConfirmation(false);
+      setTournamentToStart(null);
     }
   };
 
@@ -312,7 +344,7 @@ const UmpirePage: React.FC = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setShowStartConfirmation(true);
+                        handleStartTournamentClick(tournament);
                       }}
                       className="umpire-start-tournament-btn"
                     >
@@ -385,7 +417,7 @@ const UmpirePage: React.FC = () => {
           )}
 
           {/* Start Tournament Confirmation Modal */}
-          {showStartConfirmation && (
+          {showStartConfirmation && tournamentToStart && (
             <div className="modal-backdrop fade-in">
               <div className="modal scale-in">
                 <div className="text-center mb-6">
@@ -396,11 +428,19 @@ const UmpirePage: React.FC = () => {
                   <p style={{ color: 'var(--text-subtle)' }}>
                     This will lock the tournament schedule and begin live scoring. This action cannot be undone.
                   </p>
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm font-medium" style={{ color: 'var(--warning-orange)' }}>
+                      Tournament: {tournamentToStart.name}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setShowStartConfirmation(false)}
+                    onClick={() => {
+                      setShowStartConfirmation(false);
+                      setTournamentToStart(null);
+                    }}
                     className="btn btn-ghost flex-1"
                   >
                     Cancel
@@ -425,7 +465,7 @@ const UmpirePage: React.FC = () => {
   const player1 = activeMatch.player1Id ? UserService.getPlayerById(activeMatch.player1Id) : null;
   const player2 = activeMatch.player2Id ? UserService.getPlayerById(activeMatch.player2Id) : null;
 
-  if (!player1 || !player2 || !matchScore) return null;
+  if (!player1 || player2 || !matchScore) return null;
 
   return (
     <div className="umpire-scoring-page">
