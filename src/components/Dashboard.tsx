@@ -1,7 +1,7 @@
 import React from 'react';
 import { Target, Zap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import MatchCreateForm from './MatchCreateForm';
+import MatchModal from './MatchModal';
 import { useState } from 'react';
 
 const Dashboard: React.FC = () => {
@@ -80,9 +80,11 @@ const Dashboard: React.FC = () => {
 
       {/* Match Creation Form */}
       {showCreateForm && (
-        <MatchCreateForm
+        <MatchModal
+          isOpen={showCreateForm}
           onClose={() => setShowCreateForm(false)}
           onMatchCreated={handleMatchCreated}
+          mode="create"
         />
       )}
     </div>
