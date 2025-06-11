@@ -2,6 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import { DataInitializationService } from './services/DataInitializationService';
 import AppLayout from './components/AppLayout';
+import { useAuthStore } from './stores/authStore';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { LoginForm } from './components/auth/LoginForm';
+import { SignUpForm } from './components/auth/SignUpForm';
+import { Dashboard } from './components/dashboard/Dashboard';
+import { MatchList } from './components/matches/MatchList';
+import { TournamentList } from './components/tournaments/TournamentList';
+import { ProfileForm } from './components/profile/ProfileForm';
+import { initSentry } from './lib/sentry';
 
 // Import all CSS files
 import './index.css';
@@ -26,51 +35,29 @@ import './styles/pages/umpire.css';
 import './styles/components/multi-select-calendar.css';
 import './styles/components/tournament-form.css';
 
+// Initialize Sentry
+initSentry();
+
 function App() {
-  const [isDataReady, setIsDataReady] = useState(false);
-  const [initializationError, setInitializationError] = useState<string | null>(null);
+  const { initialize, loading, user } = useAuthStore();
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    const initializeData = async () => {
-      try {
-        await DataInitializationService.initializeAllMockData();
-        setIsDataReady(true);
-      } catch (error) {
-        console.error('Data initialization failed:', error);
-        setInitializationError('Failed to initialize application data. Please refresh the page.');
-      }
+    const init = async () => {
+      await initialize();
+      setIsInitialized(true);
     };
+    
+    init();
+  }, [initialize]);
 
-    initializeData();
-  }, []);
-
-  if (initializationError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-red-50">
-        <div className="text-center p-8">
-          <div className="text-red-600 text-xl mb-4">⚠️ Initialization Error</div>
-          <p className="text-red-700 mb-4">{initializationError}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-          >
-            Refresh Page
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isDataReady) {
+  if (!isInitialized || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="loading text-center">
           <div className="loading-spinner mx-auto mb-4"></div>
           <p className="text-lg font-medium" style={{ color: 'var(--text-standard)' }}>
-            Initializing Africa Tennis...
-          </p>
-          <p className="text-sm mt-2" style={{ color: 'var(--text-subtle)' }}>
-            Setting up your tennis experience
+            Initializing...
           </p>
         </div>
       </div>
@@ -78,9 +65,22 @@ function App() {
   }
 
   return (
-    <AuthProvider>
-      <AppLayout />
-    </AuthProvider>
+    <Routes>
+      <Route path="/login" element={!user ? <LoginForm /> : <Navigate to="/dashboard" replace />} />
+      <Route path="/signup" element={!user ? <SignUpForm /> : <Navigate to="/dashboard" replace />} />
+      
+      {/* Protected routes */}
+      <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" replace />} />
+      <Route path="/matches" element={user ? <MatchList /> : <Navigate to="/login" replace />} />
+      <Route path="/tournaments" element={user ? <TournamentList /> : <Navigate to="/login" replace />} />
+      <Route path="/profile" element={user ? <ProfileForm /> : <Navigate to="/login" replace />} />
+      
+      {/* Redirect root to dashboard or login */}
+      <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
+      
+      {/* Catch all route */}
+      <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
+    </Routes>
   );
 }
 

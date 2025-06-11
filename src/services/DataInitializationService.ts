@@ -1,13 +1,10 @@
-import { UserService } from './UserService';
-import { MatchService } from './MatchService';
-import { TournamentService } from './TournamentService';
-import { StatisticsService } from './StatisticsService';
+import { supabase } from '../lib/supabase';
 
 export class DataInitializationService {
   private static isInitialized = false;
   private static initializationPromise: Promise<void> | null = null;
 
-  static async initializeAllMockData(): Promise<void> {
+  static async initializeAllData(): Promise<void> {
     // Return existing promise if initialization is already in progress
     if (this.initializationPromise) {
       return this.initializationPromise;
@@ -29,29 +26,20 @@ export class DataInitializationService {
   }
 
   private static async performInitialization(): Promise<void> {
-    console.log('🚀 Initializing Africa Tennis mock data...');
+    console.log('🚀 Initializing Chess Tournament Platform data...');
     
     try {
-      // Initialize in dependency order to ensure data consistency
-      console.log('📊 Initializing user data...');
-      UserService.initializeMockData();
+      // Check if we have a valid Supabase connection
+      const { data, error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
       
-      console.log('🎾 Initializing match data...');
-      MatchService.initializeMockData();
+      if (error) {
+        throw new Error(`Supabase connection error: ${error.message}`);
+      }
       
-      console.log('📈 Initializing statistics data...');
-      StatisticsService.initializeMockData();
-      
-      console.log('🏆 Initializing tournament data...');
-      TournamentService.initializeMockData();
-      
-      // Simulate realistic initialization delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
+      console.log('✅ Supabase connection successful');
       this.isInitialized = true;
-      console.log('✅ Mock data initialization complete');
     } catch (error) {
-      console.error('❌ Failed to initialize mock data:', error);
+      console.error('❌ Failed to initialize data:', error);
       this.isInitialized = false;
       throw error;
     }

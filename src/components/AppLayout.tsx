@@ -1,21 +1,17 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/authStore';
 import { ThemeProvider } from '../contexts/ThemeContext';
-import LoginPage from './LoginPage';
-import OnboardingPage from './OnboardingPage';
-import Dashboard from './Dashboard';
-import TournamentPage from './TournamentPage';
-import ProfilePage from './ProfilePage';
-import RankingsPage from './RankingsPage';
-import UmpirePage from './UmpirePage';
-import MatchesPage from './MatchesPage';
+import { Dashboard } from './dashboard/Dashboard';
+import { MatchList } from './matches/MatchList';
+import { TournamentList } from './tournaments/TournamentList';
+import { ProfileForm } from './profile/ProfileForm';
 import Sidebar from './Sidebar';
 
-const AppContent: React.FC = () => {
-  const { user, isLoading } = useAuth();
+const AppLayout: React.FC = () => {
+  const { user, loading } = useAuthStore();
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="loading">
@@ -26,40 +22,28 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
-    return <LoginPage />;
+    return <Navigate to="/login" replace />;
   }
 
-  if (!user.isOnboarded) {
-    return <OnboardingPage />;
-  }
-
-  return (
-    <div className="app-layout">
-      {/* Sidebar Navigation with Theme Toggle */}
-      <Sidebar />
-
-      {/* Main Content with Router */}
-      <main className="app-main">
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/matches" element={<MatchesPage />} />
-          <Route path="/tournaments" element={<TournamentPage />} />
-          <Route path="/umpire" element={<UmpirePage />} />
-          <Route path="/rankings" element={<RankingsPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          {/* Catch-all route for unknown paths */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </main>
-    </div>
-  );
-};
-
-const AppLayout: React.FC = () => {
   return (
     <ThemeProvider>
-      <AppContent />
+      <div className="app-layout">
+        {/* Sidebar Navigation with Theme Toggle */}
+        <Sidebar />
+
+        {/* Main Content with Router */}
+        <main className="app-main">
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/matches" element={<MatchList />} />
+            <Route path="/tournaments" element={<TournamentList />} />
+            <Route path="/profile" element={<ProfileForm />} />
+            {/* Catch-all route for unknown paths */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </main>
+      </div>
     </ThemeProvider>
   );
 };

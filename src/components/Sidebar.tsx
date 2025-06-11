@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   Trophy, 
@@ -10,24 +10,34 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Gavel,
+  LogOut,
   Swords
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import { useAuthStore } from '../stores/authStore';
 
 const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut, profile } = useAuthStore();
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },
     { id: 'matches', label: 'My Matches', icon: Swords, path: '/matches' },
     { id: 'tournaments', label: 'Tournaments', icon: Trophy, path: '/tournaments' },
-    { id: 'umpire', label: 'Live Scoring', icon: Gavel, path: '/umpire' },
-    { id: 'rankings', label: 'Ratings & Rankings', icon: BarChart3, path: '/rankings' },
     { id: 'profile', label: 'Profile', icon: Settings, path: '/profile' },
   ];
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <>
@@ -55,7 +65,7 @@ const Sidebar: React.FC = () => {
           {!isCollapsed && (
             <div className="sidebar-brand">
               <Trophy size={32} style={{ color: 'var(--quantum-cyan)' }} />
-              <span className="sidebar-brand-text">Africa Tennis</span>
+              <span className="sidebar-brand-text">Chess Platform</span>
             </div>
           )}
           
@@ -77,6 +87,21 @@ const Sidebar: React.FC = () => {
             <X size={24} />
           </button>
         </div>
+
+        {/* User Info */}
+        {!isCollapsed && (
+          <div className="px-4 py-4 border-b border-gray-200">
+            <div className="flex items-center">
+              <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+                {profile?.username?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <div className="ml-3">
+                <div className="text-sm font-medium text-gray-900">{profile?.username || 'User'}</div>
+                <div className="text-xs text-gray-500">Rating: {profile?.elo_rating || 1200}</div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="sidebar-nav">
@@ -112,11 +137,22 @@ const Sidebar: React.FC = () => {
           </div>
         </div>
 
+        {/* Sign Out Button */}
+        <div className="mt-auto p-4">
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
+          >
+            <LogOut size={16} />
+            {!isCollapsed && <span>Sign Out</span>}
+          </button>
+        </div>
+
         {/* Footer */}
         {!isCollapsed && (
           <div className="sidebar-footer">
             <div className="sidebar-footer-content">
-              <p className="sidebar-footer-text">Africa Tennis</p>
+              <p className="sidebar-footer-text">Chess Tournament Platform</p>
               <p className="sidebar-footer-version">v1.0.0</p>
             </div>
           </div>

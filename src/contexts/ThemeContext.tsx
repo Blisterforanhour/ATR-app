@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { ThemeContextType } from '../types';
+
+interface ThemeContextType {
+  theme: 'dark' | 'light';
+  toggleTheme: () => void;
+}
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
@@ -19,15 +23,19 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('tennis-platform-theme') as 'dark' | 'light';
+    const savedTheme = localStorage.getItem('chess-platform-theme') as 'dark' | 'light';
     if (savedTheme) {
       setTheme(savedTheme);
+    } else {
+      // Check user preference
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme(prefersDark ? 'dark' : 'light');
     }
   }, []);
 
   useEffect(() => {
     document.body.className = `theme-${theme}`;
-    localStorage.setItem('tennis-platform-theme', theme);
+    localStorage.setItem('chess-platform-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
