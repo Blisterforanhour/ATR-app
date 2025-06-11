@@ -1,4 +1,5 @@
 import React from 'react'
+import { useEffect } from 'react'
 import { useLocation, useNavigationType, createRoutesFromChildren, matchRoutes } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
 import { BrowserTracing } from '@sentry/tracing'
@@ -18,7 +19,7 @@ export const initSentry = () => {
     integrations: [
       new BrowserTracing({
         routingInstrumentation: Sentry.reactRouterV6Instrumentation(
-          React.useEffect,
+          useEffect,
           useLocation,
           useNavigationType,
           createRoutesFromChildren,
