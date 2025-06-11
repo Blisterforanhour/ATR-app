@@ -161,32 +161,6 @@ export const ProfileForm: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {/* Profile Stats */}
-            <div className="flex-1">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-500">ELO Rating</div>
-                  <div className="text-2xl font-bold text-gray-900">{profile.elo_rating}</div>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-500">Matches Played</div>
-                  <div className="text-2xl font-bold text-gray-900">{profile.matches_played}</div>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-500">Matches Won</div>
-                  <div className="text-2xl font-bold text-gray-900">{profile.matches_won}</div>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-500">Win Rate</div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {profile.matches_played > 0
-                      ? `${Math.round((profile.matches_won / profile.matches_played) * 100)}%`
-                      : '0%'}
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="profile-form">
