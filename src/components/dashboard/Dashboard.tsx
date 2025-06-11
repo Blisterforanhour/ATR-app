@@ -71,21 +71,21 @@ export const Dashboard: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-xl p-8 mb-8 text-white">
-        <h1 className="text-3xl font-bold mb-2">Welcome back, {profile?.username}!</h1>
+        <h1 className="text-3xl font-bold mb-2">Welcome back, {profile?.username || 'Player'}!</h1>
         <p className="text-blue-100 mb-6">
           Track your chess journey, join tournaments, and improve your rating.
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white bg-opacity-20 rounded-lg p-4 backdrop-blur-sm">
-            <div className="text-2xl font-bold">{profile?.elo_rating}</div>
+            <div className="text-2xl font-bold">{profile?.elo_rating || 1200}</div>
             <div className="text-sm text-blue-100">ELO Rating</div>
           </div>
           <div className="bg-white bg-opacity-20 rounded-lg p-4 backdrop-blur-sm">
-            <div className="text-2xl font-bold">{profile?.matches_played}</div>
+            <div className="text-2xl font-bold">{profile?.matches_played || 0}</div>
             <div className="text-sm text-blue-100">Matches Played</div>
           </div>
           <div className="bg-white bg-opacity-20 rounded-lg p-4 backdrop-blur-sm">
-            <div className="text-2xl font-bold">{profile?.matches_won}</div>
+            <div className="text-2xl font-bold">{profile?.matches_won || 0}</div>
             <div className="text-sm text-blue-100">Matches Won</div>
           </div>
           <div className="bg-white bg-opacity-20 rounded-lg p-4 backdrop-blur-sm">

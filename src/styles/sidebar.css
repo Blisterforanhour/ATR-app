@@ -358,6 +358,7 @@
   transition: margin-left 0.3s ease;
   min-height: 100vh;
   overflow-x: hidden;
+  padding: 1rem;
 }
 
 .sidebar-collapsed + .app-main {
@@ -410,6 +411,7 @@
 
   .app-main {
     margin-left: 0;
+    padding-top: 4rem; /* Add space for mobile menu button */
   }
 
   .sidebar-collapsed + .app-main {

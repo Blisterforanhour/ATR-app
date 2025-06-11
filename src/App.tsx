@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AuthProvider } from './contexts/AuthContext';
-import { DataInitializationService } from './services/DataInitializationService';
-import AppLayout from './components/AppLayout';
-import { useAuthStore } from './stores/authStore';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuthStore } from './stores/authStore';
 import { LoginForm } from './components/auth/LoginForm';
 import { SignUpForm } from './components/auth/SignUpForm';
 import { Dashboard } from './components/dashboard/Dashboard';
@@ -11,6 +8,8 @@ import { MatchList } from './components/matches/MatchList';
 import { TournamentList } from './components/tournaments/TournamentList';
 import { ProfileForm } from './components/profile/ProfileForm';
 import { initSentry } from './lib/sentry';
+import Sidebar from './components/Sidebar';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Import all CSS files
 import './index.css';
@@ -64,23 +63,38 @@ function App() {
     );
   }
 
+  // For authenticated users, show the app layout with sidebar
+  if (user) {
+    return (
+      <ThemeProvider>
+        <div className="app-layout">
+          <Sidebar />
+          <main className="app-main">
+            <Routes>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/matches" element={<MatchList />} />
+              <Route path="/tournaments" element={<TournamentList />} />
+              <Route path="/profile" element={<ProfileForm />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </main>
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // For unauthenticated users, show auth routes
   return (
-    <Routes>
-      <Route path="/login" element={!user ? <LoginForm /> : <Navigate to="/dashboard" replace />} />
-      <Route path="/signup" element={!user ? <SignUpForm /> : <Navigate to="/dashboard" replace />} />
-      
-      {/* Protected routes */}
-      <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" replace />} />
-      <Route path="/matches" element={user ? <MatchList /> : <Navigate to="/login" replace />} />
-      <Route path="/tournaments" element={user ? <TournamentList /> : <Navigate to="/login" replace />} />
-      <Route path="/profile" element={user ? <ProfileForm /> : <Navigate to="/login" replace />} />
-      
-      {/* Redirect root to dashboard or login */}
-      <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
-      
-      {/* Catch all route */}
-      <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
-    </Routes>
+    <ThemeProvider>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Routes>
+          <Route path="/login" element={<LoginForm />} />
+          <Route path="/signup" element={<SignUpForm />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </div>
+    </ThemeProvider>
   );
 }
 

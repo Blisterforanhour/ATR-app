@@ -16,6 +16,7 @@ export function initSentry() {
       sentryDsn.length > 10 && 
       !sentryDsn.includes('your_sentry_dsn') && 
       !sentryDsn.includes('sentry.io/oauth/authorize') &&
+      !sentryDsn.includes('https://sentry.io/oauth/authorize/') &&
       isValidSentryDsn(sentryDsn)) {
     try {
       Sentry.init({

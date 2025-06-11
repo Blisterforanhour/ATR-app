@@ -281,3 +281,10 @@
   outline: 2px solid var(--quantum-cyan);
   outline-offset: 2px;
 }
+
+/* Animation for spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
