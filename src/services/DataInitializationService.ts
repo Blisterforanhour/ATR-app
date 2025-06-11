@@ -1,6 +1,7 @@
 import { UserService } from './UserService';
 import { MatchService } from './MatchService';
 import { TournamentService } from './TournamentService';
+import { StatisticsService } from './StatisticsService';
 
 export class DataInitializationService {
   private static isInitialized = false;
@@ -37,6 +38,9 @@ export class DataInitializationService {
       
       console.log('🎾 Initializing match data...');
       MatchService.initializeMockData();
+      
+      console.log('📈 Initializing statistics data...');
+      StatisticsService.initializeMockData();
       
       console.log('🏆 Initializing tournament data...');
       TournamentService.initializeMockData();

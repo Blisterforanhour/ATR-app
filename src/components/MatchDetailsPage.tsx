@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Match } from '../types';
 import { UserService } from '../services/UserService';
+import { StatisticsService } from '../services/StatisticsService';
 import { useAuth } from '../contexts/AuthContext';
 
 interface MatchDetailsPageProps {
@@ -79,85 +80,149 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({ match, onBack }) =>
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Generate mock statistics
-    const mockStats: MatchStatistics = {
-      possession: { 
-        user: Math.floor(Math.random() * 20) + 40, 
-        opponent: 0 
-      },
-      shots: { 
-        user: Math.floor(Math.random() * 50) + 80, 
-        opponent: Math.floor(Math.random() * 50) + 80 
-      },
-      aces: { 
-        user: Math.floor(Math.random() * 8) + 2, 
-        opponent: Math.floor(Math.random() * 8) + 2 
-      },
-      doubleFaults: { 
-        user: Math.floor(Math.random() * 4), 
-        opponent: Math.floor(Math.random() * 4) 
-      },
-      breakPoints: {
-        user: { won: Math.floor(Math.random() * 4) + 1, total: Math.floor(Math.random() * 3) + 3 },
-        opponent: { won: Math.floor(Math.random() * 4) + 1, total: Math.floor(Math.random() * 3) + 3 }
-      },
-      winners: { 
-        user: Math.floor(Math.random() * 20) + 15, 
-        opponent: Math.floor(Math.random() * 20) + 15 
-      },
-      unforcedErrors: { 
-        user: Math.floor(Math.random() * 15) + 10, 
-        opponent: Math.floor(Math.random() * 15) + 10 
+    try {
+      // Try to load real statistics if available
+      let detailedStats = null;
+      
+      if (match.detailedStatsId) {
+        detailedStats = StatisticsService.getDetailedMatchStatistics(match.detailedStatsId);
+      } else {
+        // Fallback: try to find by match ID
+        detailedStats = StatisticsService.getDetailedMatchStatisticsByMatchId(match.id);
       }
-    };
-    
-    // Calculate opponent possession
-    mockStats.possession.opponent = 100 - mockStats.possession.user;
-    
-    // Generate mock timeline
-    const mockTimeline: MatchTimeline[] = [
-      { time: '0:05', event: 'Match Start', player: 'System', description: 'Match begins', type: 'game' },
-      { time: '0:12', event: 'Ace', player: user?.name || 'You', description: 'Service ace down the T', type: 'ace' },
-      { time: '0:28', event: 'Winner', player: opponent?.name || 'Opponent', description: 'Forehand winner cross-court', type: 'winner' },
-      { time: '0:45', event: 'Break Point', player: user?.name || 'You', description: 'Break point converted', type: 'break' },
-      { time: '1:15', event: 'Set Won', player: isUserChallenger && match.challengerScore ? (match.challengerScore > (match.challengedScore || 0) ? user?.name || 'You' : opponent?.name || 'Opponent') : 'Unknown', description: 'First set completed', type: 'set' },
-    ];
-    
-    // Generate mock highlights
-    const mockHighlights: MatchHighlight[] = [
-      {
-        id: '1',
-        title: 'Amazing Rally',
-        description: '32-shot rally ending with a spectacular winner',
-        timestamp: '1:23:45',
-        type: 'rally'
-      },
-      {
-        id: '2',
-        title: 'Service Ace',
-        description: 'Powerful ace at 125 mph to save break point',
-        timestamp: '0:45:12',
-        type: 'ace'
-      },
-      {
-        id: '3',
-        title: 'Break Point Conversion',
-        description: 'Crucial break in the deciding set',
-        timestamp: '2:15:30',
-        type: 'break_point'
-      },
-      {
-        id: '4',
-        title: 'Comeback Victory',
-        description: 'Won from 2 sets down in thrilling fashion',
-        timestamp: '2:45:00',
-        type: 'comeback'
+
+      if (detailedStats && user) {
+        // Convert detailed statistics to the format expected by the UI
+        const isPlayer1 = detailedStats.player1Id === user.id;
+        
+        const convertedStats: MatchStatistics = {
+          possession: {
+            user: isPlayer1 ? detailedStats.possession.player1 : detailedStats.possession.player2,
+            opponent: isPlayer1 ? detailedStats.possession.player2 : detailedStats.possession.player1
+          },
+          shots: {
+            user: isPlayer1 ? detailedStats.shots.player1 : detailedStats.shots.player2,
+            opponent: isPlayer1 ? detailedStats.shots.player2 : detailedStats.shots.player1
+          },
+          aces: {
+            user: isPlayer1 ? detailedStats.aces.player1 : detailedStats.aces.player2,
+            opponent: isPlayer1 ? detailedStats.aces.player2 : detailedStats.aces.player1
+          },
+          doubleFaults: {
+            user: isPlayer1 ? detailedStats.doubleFaults.player1 : detailedStats.doubleFaults.player2,
+            opponent: isPlayer1 ? detailedStats.doubleFaults.player2 : detailedStats.doubleFaults.player1
+          },
+          breakPoints: {
+            user: isPlayer1 ? detailedStats.breakPoints.player1 : detailedStats.breakPoints.player2,
+            opponent: isPlayer1 ? detailedStats.breakPoints.player2 : detailedStats.breakPoints.player1
+          },
+          winners: {
+            user: isPlayer1 ? detailedStats.winners.player1 : detailedStats.winners.player2,
+            opponent: isPlayer1 ? detailedStats.winners.player2 : detailedStats.winners.player1
+          },
+          unforcedErrors: {
+            user: isPlayer1 ? detailedStats.unforcedErrors.player1 : detailedStats.unforcedErrors.player2,
+            opponent: isPlayer1 ? detailedStats.unforcedErrors.player2 : detailedStats.unforcedErrors.player1
+          }
+        };
+
+        setStatistics(convertedStats);
+
+        // Load timeline and highlights from real data
+        const realTimeline = StatisticsService.generateMatchTimeline(match.id);
+        const realHighlights = StatisticsService.generateMatchHighlights(match.id);
+        
+        setTimeline(realTimeline);
+        setHighlights(realHighlights);
+      } else {
+        // Generate mock statistics as fallback
+        const mockStats: MatchStatistics = {
+          possession: { 
+            user: Math.floor(Math.random() * 20) + 40, 
+            opponent: 0 
+          },
+          shots: { 
+            user: Math.floor(Math.random() * 50) + 80, 
+            opponent: Math.floor(Math.random() * 50) + 80 
+          },
+          aces: { 
+            user: Math.floor(Math.random() * 8) + 2, 
+            opponent: Math.floor(Math.random() * 8) + 2 
+          },
+          doubleFaults: { 
+            user: Math.floor(Math.random() * 4), 
+            opponent: Math.floor(Math.random() * 4) 
+          },
+          breakPoints: {
+            user: { won: Math.floor(Math.random() * 4) + 1, total: Math.floor(Math.random() * 3) + 3 },
+            opponent: { won: Math.floor(Math.random() * 4) + 1, total: Math.floor(Math.random() * 3) + 3 }
+          },
+          winners: { 
+            user: Math.floor(Math.random() * 20) + 15, 
+            opponent: Math.floor(Math.random() * 20) + 15 
+          },
+          unforcedErrors: { 
+            user: Math.floor(Math.random() * 15) + 10, 
+            opponent: Math.floor(Math.random() * 15) + 10 
+          }
+        };
+        
+        // Calculate opponent possession
+        mockStats.possession.opponent = 100 - mockStats.possession.user;
+        
+        // Generate mock timeline
+        const mockTimeline: MatchTimeline[] = [
+          { time: '0:05', event: 'Match Start', player: 'System', description: 'Match begins', type: 'game' },
+          { time: '0:12', event: 'Ace', player: user?.name || 'You', description: 'Service ace down the T', type: 'ace' },
+          { time: '0:28', event: 'Winner', player: opponent?.name || 'Opponent', description: 'Forehand winner cross-court', type: 'winner' },
+          { time: '0:45', event: 'Break Point', player: user?.name || 'You', description: 'Break point converted', type: 'break' },
+          { time: '1:15', event: 'Set Won', player: isUserChallenger && match.challengerScore ? (match.challengerScore > (match.challengedScore || 0) ? user?.name || 'You' : opponent?.name || 'Opponent') : 'Unknown', description: 'First set completed', type: 'set' },
+        ];
+        
+        // Generate mock highlights
+        const mockHighlights: MatchHighlight[] = [
+          {
+            id: '1',
+            title: 'Amazing Rally',
+            description: '32-shot rally ending with a spectacular winner',
+            timestamp: '1:23:45',
+            type: 'rally'
+          },
+          {
+            id: '2',
+            title: 'Service Ace',
+            description: 'Powerful ace at 125 mph to save break point',
+            timestamp: '0:45:12',
+            type: 'ace'
+          },
+          {
+            id: '3',
+            title: 'Break Point Conversion',
+            description: 'Crucial break in the deciding set',
+            timestamp: '2:15:30',
+            type: 'break_point'
+          },
+          {
+            id: '4',
+            title: 'Comeback Victory',
+            description: 'Won from 2 sets down in thrilling fashion',
+            timestamp: '2:45:00',
+            type: 'comeback'
+          }
+        ];
+        
+        setStatistics(mockStats);
+        setTimeline(mockTimeline);
+        setHighlights(mockHighlights);
       }
-    ];
+    } catch (error) {
+      console.error('Error loading match data:', error);
+      // Set empty data on error
+      setStatistics(null);
+      setTimeline([]);
+      setHighlights([]);
+    }
     
-    setStatistics(mockStats);
-    setTimeline(mockTimeline);
-    setHighlights(mockHighlights);
     setIsLoading(false);
   };
 

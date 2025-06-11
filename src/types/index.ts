@@ -25,6 +25,7 @@ export interface Match {
   challengedScore?: number;
   winner?: string;
   createdAt: string;
+  detailedStatsId?: string; // Link to detailed statistics
 }
 
 export interface Tournament {
@@ -65,6 +66,7 @@ export interface TournamentMatch {
   scheduledDate?: string;
   location: string;
   umpireId: string;
+  detailedStatsId?: string; // Link to detailed statistics
 }
 
 export interface AuthContextType {
@@ -79,4 +81,125 @@ export interface AuthContextType {
 export interface ThemeContextType {
   theme: 'dark' | 'light';
   toggleTheme: () => void;
+}
+
+// New interfaces for detailed match statistics
+export interface MatchEvent {
+  id: string;
+  matchId: string;
+  timestamp: number;
+  type: 'point_won' | 'ace' | 'double_fault' | 'winner' | 'unforced_error' | 'break_point' | 'game_won' | 'set_won' | 'match_start' | 'match_end';
+  playerId: string;
+  description: string;
+  scoreSnapshot: {
+    player1Sets: number[];
+    player2Sets: number[];
+    player1Games: number;
+    player2Games: number;
+    player1Points: number;
+    player2Points: number;
+    currentSet: number;
+    servingPlayer: 'player1' | 'player2';
+  };
+  metadata?: {
+    isBreakPoint?: boolean;
+    isSetPoint?: boolean;
+    isMatchPoint?: boolean;
+    shotType?: string;
+    courtPosition?: string;
+  };
+}
+
+export interface DetailedMatchStatistics {
+  id: string;
+  matchId: string;
+  player1Id: string;
+  player2Id: string;
+  startTime: number;
+  endTime?: number;
+  duration?: number; // in minutes
+  
+  // Court coverage and possession
+  possession: {
+    player1: number; // percentage
+    player2: number; // percentage
+  };
+  
+  // Shot statistics
+  shots: {
+    player1: number;
+    player2: number;
+  };
+  
+  // Serving statistics
+  aces: {
+    player1: number;
+    player2: number;
+  };
+  
+  doubleFaults: {
+    player1: number;
+    player2: number;
+  };
+  
+  // Break point statistics
+  breakPoints: {
+    player1: { won: number; total: number };
+    player2: { won: number; total: number };
+  };
+  
+  // Shot quality
+  winners: {
+    player1: number;
+    player2: number;
+  };
+  
+  unforcedErrors: {
+    player1: number;
+    player2: number;
+  };
+  
+  // Game flow
+  gamesWon: {
+    player1: number;
+    player2: number;
+  };
+  
+  setsWon: {
+    player1: number;
+    player2: number;
+  };
+  
+  // Additional metrics
+  longestRally?: number;
+  totalRallies?: number;
+  averageRallyLength?: number;
+  
+  // Time-based statistics
+  timeInPoints?: number; // total time spent in actual point play
+  timeInBreaks?: number; // time between points/games
+  
+  // Momentum tracking
+  momentumShifts?: Array<{
+    timestamp: number;
+    playerId: string;
+    reason: string;
+  }>;
+}
+
+export interface MatchTimeline {
+  time: string;
+  event: string;
+  player: string;
+  description: string;
+  type: 'point' | 'game' | 'set' | 'break' | 'ace' | 'winner' | 'error';
+}
+
+export interface MatchHighlight {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  type: 'ace' | 'winner' | 'break_point' | 'rally' | 'comeback';
+  videoUrl?: string;
 }

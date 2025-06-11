@@ -10,11 +10,15 @@ import {
   AlertTriangle,
   ArrowLeft,
   Plus,
-  Minus
+  Minus,
+  Zap,
+  Target,
+  Award
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { TournamentService } from '../services/TournamentService';
-import { Tournament, TournamentMatch } from '../types';
+import { StatisticsService } from '../services/StatisticsService';
+import { Tournament, TournamentMatch, MatchEvent } from '../types';
 import { UserService } from '../services/UserService';
 
 interface MatchScore {
@@ -48,6 +52,8 @@ const UmpirePage: React.FC = () => {
   const [showStartConfirmation, setShowStartConfirmation] = useState(false);
   const [showEndMatchConfirmation, setShowEndMatchConfirmation] = useState(false);
   const [tournamentToStart, setTournamentToStart] = useState<Tournament | null>(null);
+  const [detailedStatsId, setDetailedStatsId] = useState<string | null>(null);
+  const [pointType, setPointType] = useState<'normal' | 'ace' | 'double_fault' | 'winner' | 'unforced_error'>('normal');
 
   useEffect(() => {
     loadTournaments();
@@ -130,6 +136,36 @@ const UmpirePage: React.FC = () => {
     setCanUndo(true);
   };
 
+  const recordMatchEvent = (
+    eventType: MatchEvent['type'],
+    playerId: string,
+    description: string,
+    metadata?: MatchEvent['metadata']
+  ) => {
+    if (!activeMatch || !matchScore || !detailedStatsId) return;
+
+    const event: Omit<MatchEvent, 'id' | 'matchId'> = {
+      timestamp: Date.now(),
+      type: eventType,
+      playerId,
+      description,
+      scoreSnapshot: {
+        player1Sets: [...matchScore.player1Sets],
+        player2Sets: [...matchScore.player2Sets],
+        player1Games: matchScore.player1Games,
+        player2Games: matchScore.player2Games,
+        player1Points: matchScore.player1Points,
+        player2Points: matchScore.player2Points,
+        currentSet: matchScore.currentSet,
+        servingPlayer: matchScore.servingPlayer
+      },
+      metadata
+    };
+
+    StatisticsService.recordMatchEvent(activeMatch.id, event);
+    StatisticsService.processPointEvent(detailedStatsId, playerId, eventType, event.scoreSnapshot, metadata);
+  };
+
   const getPointDisplay = (points: number, isDeuce: boolean, advantage: 'player1' | 'player2' | null, player: 'player1' | 'player2') => {
     if (isDeuce) {
       if (advantage === player) return 'AD';
@@ -187,6 +223,24 @@ const UmpirePage: React.FC = () => {
     setMatchScore(initialScore);
     setScoreHistory([]);
     setCanUndo(false);
+
+    // Initialize detailed statistics for this match
+    if (match.player1Id && match.player2Id) {
+      const statsId = StatisticsService.initializeMatchStatistics(
+        match.id,
+        match.player1Id,
+        match.player2Id
+      );
+      setDetailedStatsId(statsId);
+
+      // Record match start event
+      recordMatchEvent(
+        'match_start',
+        match.player1Id,
+        'Match has begun',
+        { isMatchPoint: false }
+      );
+    }
   };
 
   const handleBackToMatches = () => {
@@ -194,22 +248,54 @@ const UmpirePage: React.FC = () => {
     setMatchScore(null);
     setScoreHistory([]);
     setCanUndo(false);
+    setDetailedStatsId(null);
+    setPointType('normal');
   };
 
   const awardPoint = (player: 'player1' | 'player2') => {
-    if (!matchScore) return;
+    if (!matchScore || !activeMatch) return;
 
     // Save current state before making changes
     saveScoreToHistory(matchScore, `Point awarded to ${player}`);
 
     const newScore = { ...matchScore };
     const opponent = player === 'player1' ? 'player2' : 'player1';
+    const playerId = player === 'player1' ? activeMatch.player1Id : activeMatch.player2Id;
+
+    if (!playerId) return;
 
     // Award point
     if (player === 'player1') {
       newScore.player1Points++;
     } else {
       newScore.player2Points++;
+    }
+
+    // Determine event type and description based on point type
+    let eventType: MatchEvent['type'] = 'point_won';
+    let description = 'Point won';
+    let metadata: MatchEvent['metadata'] = {};
+
+    switch (pointType) {
+      case 'ace':
+        eventType = 'ace';
+        description = 'Service ace';
+        break;
+      case 'double_fault':
+        eventType = 'double_fault';
+        description = 'Double fault';
+        break;
+      case 'winner':
+        eventType = 'winner';
+        description = 'Winner shot';
+        break;
+      case 'unforced_error':
+        eventType = 'unforced_error';
+        description = 'Unforced error by opponent';
+        break;
+      default:
+        description = 'Point won';
+        break;
     }
 
     // Check for game win
@@ -234,6 +320,9 @@ const UmpirePage: React.FC = () => {
       // Switch serve
       newScore.servingPlayer = newScore.servingPlayer === 'player1' ? 'player2' : 'player1';
 
+      // Record game won event
+      recordMatchEvent('game_won', playerId, `Game won by ${player}`, metadata);
+
       // Check for set win (6 games with 2 game lead, or 7-6)
       const playerGames = player === 'player1' ? newScore.player1Games : newScore.player2Games;
       const opponentGames = player === 'player1' ? newScore.player2Games : newScore.player1Games;
@@ -252,6 +341,9 @@ const UmpirePage: React.FC = () => {
         newScore.player1Games = 0;
         newScore.player2Games = 0;
         newScore.currentSet++;
+
+        // Record set won event
+        recordMatchEvent('set_won', playerId, `Set ${newScore.currentSet - 1} won by ${player}`, metadata);
       }
     } else if (playerPoints >= 3 && opponentPoints >= 3) {
       // Deuce situation
@@ -264,7 +356,13 @@ const UmpirePage: React.FC = () => {
       }
     }
 
+    // Record the point event
+    recordMatchEvent(eventType, playerId, description, metadata);
+
     setMatchScore(newScore);
+    
+    // Reset point type to normal after awarding
+    setPointType('normal');
   };
 
   const undoLastPoint = () => {
@@ -281,7 +379,7 @@ const UmpirePage: React.FC = () => {
   };
 
   const handleEndMatch = () => {
-    if (activeMatch && matchScore) {
+    if (activeMatch && matchScore && detailedStatsId) {
       // Determine winner based on sets won
       const player1SetsWon = matchScore.player1Sets.filter((games, index) => 
         games > matchScore.player2Sets[index]
@@ -294,13 +392,23 @@ const UmpirePage: React.FC = () => {
       const score = `${matchScore.player1Sets.join('-')} vs ${matchScore.player2Sets.join('-')}`;
 
       if (winnerId) {
+        // Record match end event
+        recordMatchEvent('match_end', winnerId, `Match won by ${winnerId === activeMatch.player1Id ? 'player1' : 'player2'}`, {});
+        
+        // Finalize statistics
+        StatisticsService.finalizeMatchStatistics(detailedStatsId);
+        
+        // Report match result
         TournamentService.reportMatchResult(activeMatch.id, winnerId, score);
+        
         loadMatches();
         setActiveMatch(null);
         setMatchScore(null);
         setScoreHistory([]);
         setCanUndo(false);
         setShowEndMatchConfirmation(false);
+        setDetailedStatsId(null);
+        setPointType('normal');
       }
     }
   };
@@ -615,6 +723,45 @@ const UmpirePage: React.FC = () => {
             {matchScore.advantage ? `Advantage ${matchScore.advantage === 'player1' ? player1.name : player2.name}` : 'Deuce'}
           </div>
         )}
+
+        {/* Point Type Selection */}
+        <div className="umpire-point-type-section">
+          <h3 className="umpire-point-type-title">Point Type</h3>
+          <div className="umpire-point-type-buttons">
+            <button
+              onClick={() => setPointType('normal')}
+              className={`umpire-point-type-btn ${pointType === 'normal' ? 'active' : ''}`}
+            >
+              Normal
+            </button>
+            <button
+              onClick={() => setPointType('ace')}
+              className={`umpire-point-type-btn ${pointType === 'ace' ? 'active' : ''}`}
+            >
+              <Zap size={16} />
+              Ace
+            </button>
+            <button
+              onClick={() => setPointType('winner')}
+              className={`umpire-point-type-btn ${pointType === 'winner' ? 'active' : ''}`}
+            >
+              <Target size={16} />
+              Winner
+            </button>
+            <button
+              onClick={() => setPointType('double_fault')}
+              className={`umpire-point-type-btn ${pointType === 'double_fault' ? 'active' : ''}`}
+            >
+              Double Fault
+            </button>
+            <button
+              onClick={() => setPointType('unforced_error')}
+              className={`umpire-point-type-btn ${pointType === 'unforced_error' ? 'active' : ''}`}
+            >
+              Error
+            </button>
+          </div>
+        </div>
 
         {/* Scoring Controls */}
         <div className="umpire-scoring-controls">

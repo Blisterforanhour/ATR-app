@@ -1,5 +1,6 @@
 import { Match, User } from '../types';
 import { UserService } from './UserService';
+import { StatisticsService } from './StatisticsService';
 
 export class MatchService {
   private static STORAGE_KEY = 'tennis-platform-matches';
@@ -32,6 +33,15 @@ export class MatchService {
       match.challengedScore = challengedScore;
       match.status = 'completed';
       match.winner = challengerScore > challengedScore ? match.challengerId : match.challengedId;
+      
+      // Initialize detailed statistics if not already present
+      if (!match.detailedStatsId) {
+        match.detailedStatsId = StatisticsService.initializeMatchStatistics(
+          matchId,
+          match.challengerId,
+          match.challengedId
+        );
+      }
       
       matches[matchIndex] = match;
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(matches));
@@ -145,6 +155,7 @@ export class MatchService {
         challengedScore: 4,
         winner: 'current_user',
         createdAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        detailedStatsId: 'stats_mock_1', // Link to detailed statistics
       },
       {
         id: 'match_recent_2',
@@ -157,6 +168,7 @@ export class MatchService {
         challengedScore: 5,
         winner: 'mock_4',
         createdAt: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+        detailedStatsId: 'stats_mock_2', // Link to detailed statistics
       },
       {
         id: 'match_recent_3',
