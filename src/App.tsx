@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { DataInitializationService } from './services/DataInitializationService';
-import Sidebar from './components/Sidebar';
+import Sidebar from './components/layout/Sidebar';
 import { initSentry } from './lib/sentry';
 
 // Import pages
