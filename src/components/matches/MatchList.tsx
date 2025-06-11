@@ -1,268 +1,411 @@
-import React, { useEffect, useState } from 'react'
-import { Calendar, MapPin, Trophy, Clock, Users, Plus } from 'lucide-react'
-import { useMatchStore } from '../../stores/matchStore'
-import { useAuthStore } from '../../stores/authStore'
-import { MatchScoring } from './MatchScoring'
-import { CreateMatchModal } from './CreateMatchModal'
-import { supabase } from '../../lib/supabase'
-import type { Database } from '../../types/database'
+import React, { useEffect, useState } from 'react';
+import { Search, Filter, Trophy, Calendar, Clock, Target, Plus, Swords } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
+import { useMatchStore } from '../../stores/matchStore';
+import MatchCard from '../MatchCard';
+import CreateMatchModal from './CreateMatchModal';
+import ScoreModal from '../ScoreModal';
+import MatchDetailsPage from '../MatchDetailsPage';
+import type { Database } from '../../types/database';
 
-type Match = Database['public']['Tables']['matches']['Row']
-
-interface MatchWithProfiles extends Match {
-  player1?: { username: string; elo_rating: number }
-  player2?: { username: string; elo_rating: number }
-  winner?: { username: string }
-}
+type Match = Database['public']['Tables']['matches']['Row'];
 
 export const MatchList: React.FC = () => {
-  const [matches, setMatches] = useState<MatchWithProfiles[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('all')
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
+  const [recentMatches, setRecentMatches] = useState<Match[]>([]);
+  const [filteredMatches, setFilteredMatches] = useState<Match[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | Match['status']>('all');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'upcoming' | 'recent'>('all');
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [showScoreModal, setShowScoreModal] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showMatchDetails, setShowMatchDetails] = useState(false);
+  const [selectedMatchForDetails, setSelectedMatchForDetails] = useState<Match | null>(null);
   
-  const user = useAuthStore(state => state.user)
-
-  const fetchMatches = async () => {
-    if (!user) return
-
-    setLoading(true)
-    try {
-      let query = supabase
-        .from('matches')
-        .select(`
-          *,
-          player1:profiles!matches_player1_id_fkey(username, elo_rating),
-          player2:profiles!matches_player2_id_fkey(username, elo_rating),
-          winner:profiles!matches_winner_id_fkey(username)
-        `)
-        .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
-        .order('date', { ascending: false })
-
-      const { data, error } = await query
-
-      if (error) throw error
-      setMatches(data || [])
-    } catch (error) {
-      console.error('Error fetching matches:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { user, profile } = useAuthStore();
+  const { fetchMatches, matches: storeMatches, loading } = useMatchStore();
 
   useEffect(() => {
-    fetchMatches()
-
-    // Subscribe to real-time updates
     if (user) {
-      const subscription = supabase
-        .channel('matches')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'matches',
-            filter: `or(player1_id.eq.${user.id},player2_id.eq.${user.id})`
-          },
-          () => {
-            fetchMatches()
-          }
-        )
-        .subscribe()
+      fetchMatches(user.id);
+    }
+  }, [user, fetchMatches]);
 
-      return () => {
-        subscription.unsubscribe()
+  useEffect(() => {
+    if (storeMatches.length > 0) {
+      // Convert Supabase matches to our app format
+      const convertedMatches = storeMatches.map(match => ({
+        id: match.id,
+        challengerId: match.player1_id,
+        challengedId: match.player2_id,
+        date: match.date,
+        location: match.location,
+        status: match.status,
+        challengerScore: match.score ? parseInt(match.score.split('-')[0]) : undefined,
+        challengedScore: match.score ? parseInt(match.score.split('-')[1]) : undefined,
+        winner: match.winner_id,
+        createdAt: match.created_at
+      }));
+      
+      setMatches(convertedMatches);
+      
+      // Separate upcoming and recent matches
+      const now = new Date();
+      
+      const upcoming = convertedMatches
+        .filter(match => {
+          const matchDate = new Date(match.date);
+          return matchDate > now && (match.status === 'pending' || match.status === 'in_progress');
+        })
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      const recent = convertedMatches
+        .filter(match => {
+          const matchDate = new Date(match.date);
+          return matchDate <= now || match.status === 'completed';
+        })
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      setUpcomingMatches(upcoming);
+      setRecentMatches(recent);
+    }
+  }, [storeMatches]);
+
+  useEffect(() => {
+    filterMatches();
+  }, [matches, searchQuery, statusFilter, timeFilter]);
+
+  const filterMatches = () => {
+    let filtered = matches;
+    const now = new Date();
+
+    // Apply time filter
+    if (timeFilter === 'upcoming') {
+      filtered = filtered.filter(match => {
+        const matchDate = new Date(match.date);
+        return matchDate > now && (match.status === 'pending' || match.status === 'in_progress');
+      });
+    } else if (timeFilter === 'recent') {
+      filtered = filtered.filter(match => {
+        const matchDate = new Date(match.date);
+        return matchDate <= now || match.status === 'completed';
+      });
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(match => match.status === statusFilter);
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(match => {
+        // This is a simplification - in a real app, you'd need to fetch opponent names
+        return match.location.toLowerCase().includes(searchQuery.toLowerCase());
+      });
+    }
+
+    setFilteredMatches(filtered);
+  };
+
+  const handleReportScore = (match: Match) => {
+    setSelectedMatch(match);
+    setShowScoreModal(true);
+  };
+
+  const handleScoreSubmit = async (challengerScore: number, challengedScore: number) => {
+    if (selectedMatch && user) {
+      try {
+        // Determine winner
+        const winnerId = challengerScore > challengedScore 
+          ? selectedMatch.challengerId 
+          : selectedMatch.challengedId;
+        
+        // Update match in Supabase
+        await supabase
+          .from('matches')
+          .update({
+            score: `${challengerScore}-${challengedScore}`,
+            winner_id: winnerId,
+            status: 'completed'
+          })
+          .eq('id', selectedMatch.id);
+        
+        // Refresh matches
+        fetchMatches(user.id);
+        
+        setShowScoreModal(false);
+        setSelectedMatch(null);
+      } catch (error) {
+        console.error('Error submitting score:', error);
       }
     }
-  }, [user])
+  };
 
-  const filteredMatches = matches.filter(match => {
-    if (filter === 'upcoming') {
-      return match.status === 'pending' || match.status === 'in_progress'
-    }
-    if (filter === 'completed') {
-      return match.status === 'completed'
-    }
-    return true
-  })
+  const handleCreateNewMatch = () => {
+    setShowCreateForm(true);
+  };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800'
-      case 'completed':
-        return 'bg-green-100 text-green-800'
-      case 'cancelled':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
+  const handleMatchCreated = () => {
+    if (user) {
+      fetchMatches(user.id);
     }
-  }
+  };
 
-  const canScoreMatch = (match: Match) => {
-    return user && (match.player1_id === user.id || match.player2_id === user.id) && 
-           (match.status === 'pending' || match.status === 'in_progress')
+  const handleViewMatchDetails = (match: Match) => {
+    setSelectedMatchForDetails(match);
+    setShowMatchDetails(true);
+  };
+
+  const handleBackFromDetails = () => {
+    setShowMatchDetails(false);
+    setSelectedMatchForDetails(null);
+  };
+
+  const getFilterCount = (status: Match['status']) => {
+    return matches.filter(m => m.status === status).length;
+  };
+
+  const getTimeFilterCount = (timeType: 'upcoming' | 'recent') => {
+    const now = new Date();
+    if (timeType === 'upcoming') {
+      return matches.filter(match => {
+        const matchDate = new Date(match.date);
+        return matchDate > now && (match.status === 'pending' || match.status === 'in_progress');
+      }).length;
+    } else {
+      return matches.filter(match => {
+        const matchDate = new Date(match.date);
+        return matchDate <= now || match.status === 'completed';
+      }).length;
+    }
+  };
+
+  // Show match details page if selected
+  if (showMatchDetails && selectedMatchForDetails) {
+    return (
+      <MatchDetailsPage
+        match={selectedMatchForDetails}
+        onBack={handleBackFromDetails}
+      />
+    );
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="matches-page">
+        <div className="matches-container">
+          <div className="flex items-center justify-center h-64">
+            <div className="loading-spinner"></div>
+          </div>
+        </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">My Matches</h1>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="btn btn-primary"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Create Match
-        </button>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          {[
-            { key: 'all', label: 'All Matches' },
-            { key: 'upcoming', label: 'Upcoming' },
-            { key: 'completed', label: 'Completed' }
-          ].map(({ key, label }) => (
+    <div className="matches-page">
+      <div className="matches-container">
+        {/* Header */}
+        <div className="matches-header">
+          <div className="matches-title-section">
+            <h1 className="matches-title">
+              <Swords size={32} />
+              My Matches
+            </h1>
+            <p className="matches-subtitle">
+              Manage your scheduled matches, view results, and track your tennis journey
+            </p>
+          </div>
+          
+          <div className="matches-header-actions">
             <button
-              key={key}
-              onClick={() => setFilter(key as any)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                filter === key
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              onClick={handleCreateNewMatch}
+              className="matches-new-btn"
             >
-              {label}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Matches List */}
-      {filteredMatches.length === 0 ? (
-        <div className="text-center py-12">
-          <Trophy className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No matches found</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {filter === 'all' 
-              ? "You haven't played any matches yet."
-              : `No ${filter} matches found.`
-            }
-          </p>
-          <div className="mt-6">
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn btn-primary"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Create Your First Match
+              <Plus size={16} />
+              Create New Match
             </button>
           </div>
         </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredMatches.map((match) => (
-            <div
-              key={match.id}
-              className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow"
-            >
-              {/* Match Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <Users className="h-5 w-5 text-gray-500" />
-                  <span className="font-medium text-gray-900">
-                    {match.player1?.username} vs {match.player2?.username}
-                  </span>
+
+        {/* Upcoming Matches Section */}
+        {upcomingMatches.length > 0 && (
+          <div className="matches-section">
+            <h2 className="matches-section-title">
+              <Clock size={24} />
+              Upcoming Matches ({upcomingMatches.length})
+            </h2>
+            <div className="matches-grid">
+              {upcomingMatches.map((match) => (
+                <MatchCard
+                  key={match.id}
+                  match={match}
+                  currentUserId={user?.id || ''}
+                  onReportScore={() => handleReportScore(match)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Matches Section */}
+        {recentMatches.length > 0 && (
+          <div className="matches-section">
+            <h2 className="matches-section-title">
+              <Calendar size={24} />
+              Recent Matches ({recentMatches.length})
+            </h2>
+            <div className="matches-grid">
+              {recentMatches.map((match) => (
+                <div key={match.id} className="match-card-with-details">
+                  <MatchCard
+                    match={match}
+                    currentUserId={user?.id || ''}
+                    onReportScore={() => handleReportScore(match)}
+                  />
+                  
+                  <button
+                    onClick={() => handleViewMatchDetails(match)}
+                    className="match-details-btn"
+                  >
+                    View Details
+                  </button>
                 </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(match.status)}`}>
-                  {match.status.replace('_', ' ')}
-                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Filters and Search - Only show if there are matches */}
+        {matches.length > 0 && (
+          <div className="matches-filters">
+            <div className="matches-filters-header">
+              <h2 className="matches-section-title">
+                <Filter size={24} />
+                All Matches ({matches.length})
+              </h2>
+            </div>
+            
+            <div className="matches-filters-content">
+              {/* Search Bar */}
+              <div className="matches-search">
+                <div className="matches-search-container">
+                  <Search size={20} className="matches-search-icon" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="matches-search-input"
+                    placeholder="Search by opponent or location..."
+                  />
+                </div>
               </div>
 
-              {/* Match Details */}
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center text-sm text-gray-600">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  {new Date(match.date).toLocaleDateString()} at{' '}
-                  {new Date(match.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {/* Filter Controls */}
+              <div className="matches-filter-controls">
+                <div className="matches-filter-group">
+                  <label className="matches-filter-label">Time Period</label>
+                  <select
+                    value={timeFilter}
+                    onChange={(e) => setTimeFilter(e.target.value as typeof timeFilter)}
+                    className="form-select matches-filter-select"
+                  >
+                    <option value="all">All Matches ({matches.length})</option>
+                    <option value="upcoming">Upcoming ({getTimeFilterCount('upcoming')})</option>
+                    <option value="recent">Recent ({getTimeFilterCount('recent')})</option>
+                  </select>
                 </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  {match.location}
+
+                <div className="matches-filter-group">
+                  <label className="matches-filter-label">Status</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                    className="form-select matches-filter-select"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="pending">Pending ({getFilterCount('pending')})</option>
+                    <option value="in_progress">In Progress ({getFilterCount('in_progress')})</option>
+                    <option value="completed">Completed ({getFilterCount('completed')})</option>
+                    <option value="cancelled">Cancelled ({getFilterCount('cancelled')})</option>
+                  </select>
                 </div>
               </div>
+            </div>
 
-              {/* Score Display */}
-              {match.status === 'completed' && match.score && (
-                <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-gray-900">{match.score}</div>
-                    {match.winner && (
-                      <div className="text-sm text-green-600 font-medium">
-                        Winner: {match.winner.username}
-                      </div>
-                    )}
-                  </div>
+            {/* Filtered Results */}
+            <div className="matches-grid">
+              {filteredMatches.length > 0 ? (
+                filteredMatches.map((match) => (
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    currentUserId={user?.id || ''}
+                    onReportScore={() => handleReportScore(match)}
+                  />
+                ))
+              ) : (
+                <div className="matches-empty">
+                  <Search size={48} className="matches-empty-icon" />
+                  <h3 className="matches-empty-title">No matches found</h3>
+                  <p className="matches-empty-description">
+                    Try adjusting your search or filter criteria.
+                  </p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
 
-              {/* Actions */}
-              <div className="flex space-x-2">
-                {canScoreMatch(match) && (
-                  <button
-                    onClick={() => setSelectedMatch(match)}
-                    className="flex-1 btn btn-primary btn-sm"
-                  >
-                    <Clock className="h-4 w-4 mr-1" />
-                    {match.status === 'pending' ? 'Start Match' : 'Update Score'}
-                  </button>
-                )}
-                <button className="flex-1 btn btn-secondary btn-sm">
-                  View Details
+        {/* No Matches State */}
+        {matches.length === 0 && (
+          <div className="matches-empty-state">
+            <div className="matches-empty-content">
+              <Swords size={64} className="matches-empty-icon" />
+              <h3 className="matches-empty-title">
+                No Matches Scheduled
+              </h3>
+              <p className="matches-empty-description">
+                Create matches with other players to start building your match history and climb the rankings!
+              </p>
+              <div className="matches-empty-actions">
+                <button
+                  onClick={handleCreateNewMatch}
+                  className="matches-empty-btn"
+                >
+                  <Target size={16} />
+                  Create a Match
                 </button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
-      {/* Match Scoring Modal */}
-      {selectedMatch && (
-        <MatchScoring
+      {/* Score Modal */}
+      {showScoreModal && selectedMatch && (
+        <ScoreModal
           match={selectedMatch}
-          onClose={() => setSelectedMatch(null)}
-          onScoreSubmitted={() => {
-            fetchMatches()
-            setSelectedMatch(null)
+          onSubmit={handleScoreSubmit}
+          onClose={() => {
+            setShowScoreModal(false);
+            setSelectedMatch(null);
           }}
         />
       )}
 
-      {/* Create Match Modal */}
-      {showCreateModal && (
+      {/* Match Creation Form */}
+      {showCreateForm && (
         <CreateMatchModal
-          onClose={() => setShowCreateModal(false)}
-          onMatchCreated={() => {
-            fetchMatches()
-            setShowCreateModal(false)
-          }}
+          isOpen={showCreateForm}
+          onClose={() => setShowCreateForm(false)}
+          onMatchCreated={handleMatchCreated}
+          mode="create"
         />
       )}
     </div>
-  )
-}
+  );
+};

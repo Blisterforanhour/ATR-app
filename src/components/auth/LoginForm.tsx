@@ -1,161 +1,214 @@
-import React, { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { Link } from 'react-router-dom'
-import { useAuthStore } from '../../stores/authStore'
-import { Eye, EyeOff, Mail, Lock, Loader2, AlertCircle } from 'lucide-react'
-
-const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters')
-})
-
-type LoginFormData = z.infer<typeof loginSchema>
+import React, { useState } from 'react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
+import { Link, useNavigate } from 'react-router-dom';
 
 export const LoginForm: React.FC = () => {
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [errors, setErrors] = useState<{email?: string; password?: string}>({});
   
-  const signIn = useAuthStore(state => state.signIn)
+  const { signIn } = useAuthStore();
+  const navigate = useNavigate();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors }
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema)
-  })
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
-  const getErrorMessage = (error: any): string => {
-    if (error?.message?.includes('Invalid login credentials')) {
-      return 'The email or password you entered is incorrect. Please check your credentials and try again.'
+  const handleInputChange = (field: 'email' | 'password', value: string) => {
+    if (field === 'email') {
+      setEmail(value);
+      if (errors.email) {
+        setErrors(prev => ({ ...prev, email: undefined }));
+      }
+    } else {
+      setPassword(value);
+      if (errors.password) {
+        setErrors(prev => ({ ...prev, password: undefined }));
+      }
     }
-    if (error?.message?.includes('Email not confirmed')) {
-      return 'Please check your email and click the confirmation link before signing in.'
-    }
-    if (error?.message?.includes('Too many requests')) {
-      return 'Too many login attempts. Please wait a few minutes before trying again.'
-    }
-    return error?.message || 'An unexpected error occurred. Please try again.'
-  }
+    if (message) setMessage('');
+  };
 
-  const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true)
-    setError(null)
+  const validateForm = () => {
+    const newErrors: {email?: string; password?: string} = {};
     
-    try {
-      await signIn(data.email, data.password)
-    } catch (err: any) {
-      setError(getErrorMessage(err))
-    } finally {
-      setIsLoading(false)
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!validateEmail(email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
-  }
+    
+    if (!password.trim()) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    setMessage('');
+
+    try {
+      await signIn(email, password);
+      setMessage('Login successful! Redirecting...');
+      navigate('/dashboard');
+    } catch (error: any) {
+      setMessage(error.message || 'Invalid credentials. Please try again.');
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="bg-white shadow-lg rounded-lg p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome Back
-          </h1>
-          <p className="text-gray-600">
-            Sign in to your chess tournament account
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <div className="flex items-start">
-                <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
-                <div>
-                  <p className="text-red-800 text-sm">{error}</p>
-                  {error.includes('email or password you entered is incorrect') && (
-                    <p className="text-red-700 text-xs mt-2">
-                      Don't have an account?{' '}
-                      <Link to="/signup" className="underline hover:no-underline">
-                        Sign up here
-                      </Link>
-                    </p>
-                  )}
-                </div>
+    <div className="login-page-modern">
+      <div className="login-container-modern">
+        <div className="login-card">
+          {/* Logo Section */}
+          <div className="login-header">
+            <div className="login-logo">
+              <div className="logo-icon">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.1"/>
+                  <path d="M24 8L32 16L24 24L16 16L24 8Z" fill="currentColor"/>
+                  <path d="M16 24L24 32L32 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
+              <h1 className="logo-text">Africa Tennis</h1>
             </div>
-          )}
-
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
-                {...register('email')}
-                type="email"
-                id="email"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter your email"
-              />
-            </div>
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-            )}
+            <p className="login-subtitle">Welcome back to your tennis journey</p>
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
-                {...register('password')}
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter your password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
+          {/* Form Section */}
+          <form onSubmit={handleSubmit} className="login-form-modern" noValidate>
+            {/* Email Field */}
+            <div className="form-field">
+              <label htmlFor="email" className="form-label-modern">
+                Email Address
+              </label>
+              <div className="input-container">
+                <Mail size={20} className="input-icon" />
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  className={`form-input-modern ${errors.email ? 'error' : ''}`}
+                  placeholder="Enter your email"
+                  required
+                  disabled={isLoading}
+                  autoComplete="email"
+                />
+              </div>
+              {errors.email && (
+                <span className="error-message" role="alert">
+                  {errors.email}
+                </span>
+              )}
             </div>
-            {errors.password && (
-              <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+
+            {/* Password Field */}
+            <div className="form-field">
+              <label htmlFor="password" className="form-label-modern">
+                Password
+              </label>
+              <div className="input-container">
+                <Lock size={20} className="input-icon" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  value={password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  className={`form-input-modern ${errors.password ? 'error' : ''}`}
+                  placeholder="Enter your password"
+                  required
+                  disabled={isLoading}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="password-toggle"
+                  disabled={isLoading}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {errors.password && (
+                <span className="error-message" role="alert">
+                  {errors.password}
+                </span>
+              )}
+            </div>
+
+            {/* Remember Me & Forgot Password */}
+            <div className="form-options">
+              <label className="checkbox-container">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  disabled={isLoading}
+                />
+                <span className="checkmark"></span>
+                <span className="checkbox-label">Remember me</span>
+              </label>
+              <Link to="/forgot-password" className="forgot-password-link">
+                Forgot Password?
+              </Link>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading || !email.trim() || !password.trim()}
+              className="login-button-modern"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 size={20} className="loading-icon" />
+                  <span>Signing In...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight size={20} />
+                </>
+              )}
+            </button>
+
+            {/* Message Display */}
+            {message && (
+              <div className={`message ${message.includes('successful') ? 'success' : 'error'}`} role="alert">
+                {message}
+              </div>
             )}
+          </form>
+
+          {/* Create Account Section */}
+          <div className="signup-section">
+            <p className="signup-text">
+              Don't have an account?{' '}
+              <Link to="/signup" className="signup-link">
+                Create Account
+              </Link>
+            </p>
           </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Signing In...
-              </>
-            ) : (
-              'Sign In'
-            )}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-gray-600">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-blue-600 hover:text-blue-500 font-medium">
-              Sign up
-            </Link>
-          </p>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};

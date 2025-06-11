@@ -26,7 +26,7 @@ export class DataInitializationService {
   }
 
   private static async performInitialization(): Promise<void> {
-    console.log('🚀 Initializing Chess Tournament Platform data...');
+    console.log('🚀 Initializing Africa Tennis data...');
     
     try {
       // Check if we have a valid Supabase connection

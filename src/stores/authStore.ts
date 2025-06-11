@@ -1,22 +1,22 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { supabase } from '../lib/supabase'
-import type { User, Session } from '@supabase/supabase-js'
-import type { Database } from '../types/database'
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { supabase } from '../lib/supabase';
+import type { User, Session } from '@supabase/supabase-js';
+import type { Database } from '../types/database';
 
-type Profile = Database['public']['Tables']['profiles']['Row']
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 interface AuthState {
-  user: User | null
-  profile: Profile | null
-  session: Session | null
-  loading: boolean
-  signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, username: string) => Promise<void>
-  signOut: () => Promise<void>
-  updateProfile: (updates: Partial<Profile>) => Promise<void>
-  fetchProfile: () => Promise<void>
-  initialize: () => Promise<void>
+  user: User | null;
+  profile: Profile | null;
+  session: Session | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, username: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  updateProfile: (updates: Partial<Profile>) => Promise<void>;
+  fetchProfile: () => Promise<void>;
+  initialize: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -29,17 +29,17 @@ export const useAuthStore = create<AuthState>()(
 
       initialize: async () => {
         try {
-          const { data: { session } } = await supabase.auth.getSession()
+          const { data: { session } } = await supabase.auth.getSession();
           
           if (session) {
             set({ 
               user: session.user, 
               session,
               loading: false 
-            })
-            await get().fetchProfile()
+            });
+            await get().fetchProfile();
           } else {
-            set({ loading: false })
+            set({ loading: false });
           }
 
           // Listen for auth changes
@@ -49,115 +49,104 @@ export const useAuthStore = create<AuthState>()(
                 user: session.user, 
                 session,
                 loading: false 
-              })
-              await get().fetchProfile()
+              });
+              await get().fetchProfile();
             } else if (event === 'SIGNED_OUT') {
               set({ 
                 user: null, 
                 profile: null, 
                 session: null,
                 loading: false 
-              })
+              });
             }
-          })
+          });
         } catch (error) {
-          console.error('Auth initialization error:', error)
-          set({ loading: false })
+          console.error('Auth initialization error:', error);
+          set({ loading: false });
         }
       },
 
       signIn: async (email: string, password: string) => {
-        set({ loading: true })
+        set({ loading: true });
         try {
           const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password
-          })
+          });
 
-          if (error) throw error
+          if (error) throw error;
 
           set({ 
             user: data.user, 
             session: data.session,
             loading: false 
-          })
+          });
           
-          await get().fetchProfile()
+          await get().fetchProfile();
         } catch (error: any) {
-          set({ loading: false })
-          throw new Error(error.message || 'Sign in failed')
+          set({ loading: false });
+          throw new Error(error.message || 'Sign in failed');
         }
       },
 
       signUp: async (email: string, password: string, username: string) => {
-        set({ loading: true })
+        set({ loading: true });
         try {
           const { data, error } = await supabase.auth.signUp({
             email,
-            password
-          })
+            password,
+            options: {
+              data: {
+                username
+              }
+            }
+          });
 
-          if (error) throw error
+          if (error) throw error;
 
-          if (data.user) {
-            // Create profile
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .insert({
-                user_id: data.user.id,
-                username,
-                elo_rating: 1200,
-                matches_played: 0,
-                matches_won: 0,
-                skill_level: 'beginner'
-              })
-
-            if (profileError) throw profileError
-          }
-
-          set({ loading: false })
+          set({ loading: false });
         } catch (error: any) {
-          set({ loading: false })
-          throw new Error(error.message || 'Sign up failed')
+          set({ loading: false });
+          throw new Error(error.message || 'Sign up failed');
         }
       },
 
       signOut: async () => {
         try {
-          const { error } = await supabase.auth.signOut()
-          if (error) throw error
+          const { error } = await supabase.auth.signOut();
+          if (error) throw error;
           
           set({ 
             user: null, 
             profile: null, 
             session: null 
-          })
+          });
         } catch (error: any) {
-          throw new Error(error.message || 'Sign out failed')
+          throw new Error(error.message || 'Sign out failed');
         }
       },
 
       fetchProfile: async () => {
-        const { user } = get()
-        if (!user) return
+        const { user } = get();
+        if (!user) return;
 
         try {
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('user_id', user.id)
-            .single()
+            .single();
 
-          if (error) throw error
-          set({ profile: data })
+          if (error) throw error;
+          set({ profile: data });
         } catch (error: any) {
-          console.error('Error fetching profile:', error)
+          console.error('Error fetching profile:', error);
         }
       },
 
       updateProfile: async (updates: Partial<Profile>) => {
-        const { user, profile } = get()
-        if (!user || !profile) throw new Error('No user logged in')
+        const { user, profile } = get();
+        if (!user || !profile) throw new Error('No user logged in');
 
         try {
           const { data, error } = await supabase
@@ -165,12 +154,12 @@ export const useAuthStore = create<AuthState>()(
             .update({ ...updates, updated_at: new Date().toISOString() })
             .eq('user_id', user.id)
             .select()
-            .single()
+            .single();
 
-          if (error) throw error
-          set({ profile: data })
+          if (error) throw error;
+          set({ profile: data });
         } catch (error: any) {
-          throw new Error(error.message || 'Profile update failed')
+          throw new Error(error.message || 'Profile update failed');
         }
       }
     }),
@@ -183,4 +172,4 @@ export const useAuthStore = create<AuthState>()(
       })
     }
   )
-)
+);

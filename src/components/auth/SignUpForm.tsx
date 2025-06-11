@@ -1,205 +1,288 @@
-import React, { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { useAuthStore } from '../../stores/authStore'
-import { Eye, EyeOff, Mail, Lock, User, Loader2 } from 'lucide-react'
-
-const signUpSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string(),
-  username: z.string().min(3, 'Username must be at least 3 characters')
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"]
-})
-
-type SignUpFormData = z.infer<typeof signUpSchema>
+import React, { useState } from 'react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
+import { Link, useNavigate } from 'react-router-dom';
 
 export const SignUpForm: React.FC = () => {
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+    username?: string;
+  }>({});
   
-  const signUp = useAuthStore(state => state.signUp)
+  const { signUp } = useAuthStore();
+  const navigate = useNavigate();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors }
-  } = useForm<SignUpFormData>({
-    resolver: zodResolver(signUpSchema)
-  })
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
-  const onSubmit = async (data: SignUpFormData) => {
-    setIsLoading(true)
-    setError(null)
+  const handleInputChange = (
+    field: 'email' | 'password' | 'confirmPassword' | 'username', 
+    value: string
+  ) => {
+    if (field === 'email') setEmail(value);
+    else if (field === 'password') setPassword(value);
+    else if (field === 'confirmPassword') setConfirmPassword(value);
+    else if (field === 'username') setUsername(value);
     
-    try {
-      await signUp(data.email, data.password, data.username)
-      setSuccess(true)
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setIsLoading(false)
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
     }
-  }
+    if (message) setMessage('');
+  };
 
-  if (success) {
-    return (
-      <div className="w-full max-w-md mx-auto">
-        <div className="bg-white shadow-lg rounded-lg p-8 text-center">
-          <div className="text-green-600 mb-4">
-            <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h2>
-          <p className="text-gray-600">
-            We've sent you a confirmation link. Please check your email and click the link to activate your account.
-          </p>
-        </div>
-      </div>
-    )
-  }
+  const validateForm = () => {
+    const newErrors: {
+      email?: string;
+      password?: string;
+      confirmPassword?: string;
+      username?: string;
+    } = {};
+    
+    if (!username.trim()) {
+      newErrors.username = 'Username is required';
+    } else if (username.length < 3) {
+      newErrors.username = 'Username must be at least 3 characters';
+    }
+    
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!validateEmail(email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    
+    if (!password.trim()) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+    
+    if (!confirmPassword.trim()) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    setMessage('');
+
+    try {
+      await signUp(email, password, username);
+      setMessage('Account created successfully! Redirecting to login...');
+      
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+    } catch (error: any) {
+      setMessage(error.message || 'Failed to create account. Please try again.');
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="bg-white shadow-lg rounded-lg p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Create Account
-          </h1>
-          <p className="text-gray-600">
-            Join the chess tournament platform
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <p className="text-red-800 text-sm">{error}</p>
+    <div className="onboarding-page-modern">
+      <div className="onboarding-container-modern">
+        <div className="onboarding-card-modern">
+          {/* Header Section */}
+          <div className="onboarding-header-modern">
+            <div className="onboarding-logo">
+              <div className="logo-icon-modern">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.1"/>
+                  <path d="M24 8L32 16L24 24L16 16L24 8Z" fill="currentColor"/>
+                  <path d="M16 24L24 32L32 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
             </div>
-          )}
+            <h1 className="onboarding-title-modern">
+              Join Africa Tennis
+            </h1>
+            <p className="onboarding-subtitle-modern">
+              Create your account to start your tennis journey
+            </p>
+          </div>
 
-          <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-              Username
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+          {/* Form Section */}
+          <form onSubmit={handleSubmit} className="onboarding-form-modern">
+            {/* Username Field */}
+            <div className="onboarding-field">
+              <div className="field-header">
+                <User size={20} className="field-icon" />
+                <span className="field-label">Username</span>
+              </div>
               <input
-                {...register('username')}
                 type="text"
-                id="username"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={username}
+                onChange={(e) => handleInputChange('username', e.target.value)}
+                className="onboarding-input-modern"
                 placeholder="Choose a username"
+                required
+                disabled={isLoading}
               />
+              {errors.username && (
+                <span className="error-message" style={{ color: 'var(--error-pink)' }}>
+                  {errors.username}
+                </span>
+              )}
             </div>
-            {errors.username && (
-              <p className="mt-1 text-sm text-red-600">{errors.username.message}</p>
-            )}
-          </div>
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            {/* Email Field */}
+            <div className="onboarding-field">
+              <div className="field-header">
+                <Mail size={20} className="field-icon" />
+                <span className="field-label">Email Address</span>
+              </div>
               <input
-                {...register('email')}
                 type="email"
-                id="email"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className="onboarding-input-modern"
                 placeholder="Enter your email"
+                required
+                disabled={isLoading}
               />
+              {errors.email && (
+                <span className="error-message" style={{ color: 'var(--error-pink)' }}>
+                  {errors.email}
+                </span>
+              )}
             </div>
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-            )}
-          </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
-                {...register('password')}
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Create a password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            {/* Password Field */}
+            <div className="onboarding-field">
+              <div className="field-header">
+                <Lock size={20} className="field-icon" />
+                <span className="field-label">Password</span>
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  className="onboarding-input-modern"
+                  placeholder="Create a password"
+                  required
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                  style={{ color: 'var(--text-subtle)' }}
+                  disabled={isLoading}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {errors.password && (
+                <span className="error-message" style={{ color: 'var(--error-pink)' }}>
+                  {errors.password}
+                </span>
+              )}
+            </div>
+
+            {/* Confirm Password Field */}
+            <div className="onboarding-field">
+              <div className="field-header">
+                <Lock size={20} className="field-icon" />
+                <span className="field-label">Confirm Password</span>
+              </div>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                  className="onboarding-input-modern"
+                  placeholder="Confirm your password"
+                  required
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                  style={{ color: 'var(--text-subtle)' }}
+                  disabled={isLoading}
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <span className="error-message" style={{ color: 'var(--error-pink)' }}>
+                  {errors.confirmPassword}
+                </span>
+              )}
+            </div>
+
+            {/* Message Display */}
+            {message && (
+              <div 
+                className="p-4 rounded-lg text-center" 
+                style={{ 
+                  backgroundColor: message.includes('success') ? 'rgba(0, 255, 170, 0.1)' : 'rgba(255, 51, 102, 0.1)',
+                  color: message.includes('success') ? 'var(--success-green)' : 'var(--error-pink)'
+                }}
               >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                {message}
+              </div>
             )}
-          </div>
 
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-              Confirm Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
-                {...register('confirmPassword')}
-                type={showConfirmPassword ? 'text' : 'password'}
-                id="confirmPassword"
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Confirm your password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-            {errors.confirmPassword && (
-              <p className="mt-1 text-sm text-red-600">{errors.confirmPassword.message}</p>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Creating Account...
-              </>
-            ) : (
-              'Create Account'
-            )}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-gray-600">
-            Already have an account?{' '}
-            <button className="text-blue-600 hover:text-blue-500 font-medium">
-              Sign in
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="onboarding-submit-modern"
+            >
+              {isLoading ? (
+                <>
+                  <div className="loading-spinner-modern"></div>
+                  <span>Creating Account...</span>
+                </>
+              ) : (
+                <>
+                  <span>Create Account</span>
+                  <ArrowRight size={20} />
+                </>
+              )}
             </button>
-          </p>
+
+            {/* Login Link */}
+            <div className="text-center mt-4">
+              <p style={{ color: 'var(--text-subtle)' }}>
+                Already have an account?{' '}
+                <Link 
+                  to="/login" 
+                  className="font-medium"
+                  style={{ color: 'var(--quantum-cyan)' }}
+                >
+                  Sign In
+                </Link>
+              </p>
+            </div>
+          </form>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
