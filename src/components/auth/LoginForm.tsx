@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 import { Eye, EyeOff, Mail, Lock, Loader2 } from 'lucide-react'
 
@@ -123,9 +124,9 @@ export const LoginForm: React.FC = () => {
         <div className="mt-6 text-center">
           <p className="text-gray-600">
             Don't have an account?{' '}
-            <button className="text-blue-600 hover:text-blue-500 font-medium">
+            <Link to="/signup" className="text-blue-600 hover:text-blue-500 font-medium">
               Sign up
-            </button>
+            </Link>
           </p>
         </div>
       </div>
