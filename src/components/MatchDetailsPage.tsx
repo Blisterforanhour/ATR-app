@@ -20,7 +20,7 @@ import {
 import { Match } from '../types';
 import { UserService } from '../services/UserService';
 import { StatisticsService } from '../services/StatisticsService';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/authStore';
 
 interface MatchDetailsPageProps {
   match: Match;
@@ -55,7 +55,7 @@ interface MatchHighlight {
 }
 
 const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({ match, onBack }) => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'overview' | 'statistics' | 'timeline' | 'highlights'>('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [statistics, setStatistics] = useState<MatchStatistics | null>(null);
