@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
+import { Routes, Route, Navigate, Link } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 import { initSentry, SentryErrorBoundary } from './lib/sentry'
 import { LoginForm } from './components/auth/LoginForm'
@@ -185,71 +185,69 @@ function App() {
         </div>
       </div>
     )}>
-      <Router>
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-                  <LoginForm />
-                </div>
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/signup"
-            element={
-              <PublicRoute>
-                <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-                  <SignUpForm />
-                </div>
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Dashboard />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/matches"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <MatchList />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tournaments"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <TournamentList />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <ProfileForm />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </Router>
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+                <LoginForm />
+              </div>
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <PublicRoute>
+              <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+                <SignUpForm />
+              </div>
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Dashboard />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/matches"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <MatchList />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tournaments"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <TournamentList />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ProfileForm />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
     </SentryErrorBoundary>
   )
 }
