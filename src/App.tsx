@@ -4,13 +4,17 @@ import { useAuthStore } from './stores/authStore';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { DataInitializationService } from './services/DataInitializationService';
 import Sidebar from './components/Sidebar';
-import { LoginForm } from './components/auth/LoginForm';
-import { SignUpForm } from './components/auth/SignUpForm';
-import { Dashboard } from './components/dashboard/Dashboard';
-import { MatchList } from './components/matches/MatchList';
-import { TournamentList } from './components/tournaments/TournamentList';
-import { ProfileForm } from './components/profile/ProfileForm';
 import { initSentry } from './lib/sentry';
+
+// Import pages
+import LoginPage from './pages/LoginPage';
+import SignUpPage from './pages/SignUpPage';
+import DashboardPage from './pages/DashboardPage';
+import MatchesPage from './pages/MatchesPage';
+import TournamentsPage from './pages/TournamentsPage';
+import ProfilePage from './pages/ProfilePage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 // Import core styles only
 import './styles/base.css';
@@ -99,10 +103,10 @@ function App() {
           <Sidebar />
           <main className="app-main">
             <Routes>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/matches" element={<MatchList />} />
-              <Route path="/tournaments" element={<TournamentList />} />
-              <Route path="/profile" element={<ProfileForm />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/matches" element={<MatchesPage />} />
+              <Route path="/tournaments" element={<TournamentsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
@@ -117,8 +121,10 @@ function App() {
     <ThemeProvider>
       <div className="min-h-screen">
         <Routes>
-          <Route path="/login" element={<LoginForm />} />
-          <Route path="/signup" element={<SignUpForm />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
