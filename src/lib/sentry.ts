@@ -1,42 +1,26 @@
-import React from 'react'
-import { useEffect } from 'react'
-import { useLocation, useNavigationType, createRoutesFromChildren, matchRoutes } from 'react-router-dom'
-import * as Sentry from '@sentry/react'
-import { BrowserTracing } from '@sentry/tracing'
+import * as Sentry from '@sentry/react';
 
-export const initSentry = () => {
-  const dsn = import.meta.env.VITE_SENTRY_DSN
-  const environment = import.meta.env.VITE_ENVIRONMENT || 'development'
+// Only initialize Sentry if we have a valid DSN
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 
-  if (!dsn) {
-    console.warn('Sentry DSN not provided, error tracking disabled')
-    return
-  }
-
+// Check if DSN is provided and not a placeholder value
+if (sentryDsn && sentryDsn !== 'your_sentry_dsn' && sentryDsn.startsWith('https://')) {
   Sentry.init({
-    dsn,
-    environment,
+    dsn: sentryDsn,
+    environment: import.meta.env.VITE_ENVIRONMENT || 'development',
     integrations: [
-      new BrowserTracing({
-        routingInstrumentation: Sentry.reactRouterV6Instrumentation(
-          useEffect,
-          useLocation,
-          useNavigationType,
-          createRoutesFromChildren,
-          matchRoutes
-        )
-      })
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration({
+        maskAllText: false,
+        blockAllMedia: false,
+      }),
     ],
-    tracesSampleRate: environment === 'production' ? 0.1 : 1.0,
-    beforeSend(event) {
-      // Filter out development errors
-      if (environment === 'development') {
-        return null
-      }
-      return event
-    }
-  })
+    tracesSampleRate: import.meta.env.VITE_ENVIRONMENT === 'production' ? 0.1 : 1.0,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+  });
+} else {
+  console.log('Sentry not initialized: No valid DSN provided');
 }
 
-// Error boundary component
-export const SentryErrorBoundary = Sentry.withErrorBoundary
+export { Sentry };
