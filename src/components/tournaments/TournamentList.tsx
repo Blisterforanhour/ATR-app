@@ -160,147 +160,162 @@ export const TournamentList: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="loading-spinner"></div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Tournaments</h1>
-        <button className="btn btn-primary">
-          <Plus className="h-5 w-5 mr-2" />
-          Create Tournament
-        </button>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Search tournaments..."
-          />
-        </div>
-        
-        <div className="w-full md:w-64">
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
-            >
-              <option value="all">All Statuses</option>
-              <option value="registration_open">Registration Open</option>
-              <option value="registration_closed">Registration Closed</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tournaments List */}
-      {filteredTournaments.length === 0 ? (
-        <div className="text-center py-12">
-          <Trophy className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No tournaments found</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {searchQuery || statusFilter !== 'all'
-              ? "No tournaments match your search criteria."
-              : "There are no tournaments available at the moment."}
+    <div className="tournaments-page">
+      <div className="tournaments-container">
+        {/* Welcome Section */}
+        <div className="tournaments-welcome">
+          <h1 className="tournaments-welcome-title">
+            <span className="tournaments-welcome-name">Tournaments</span>
+          </h1>
+          <p className="tournaments-welcome-subtitle">
+            Compete in organized tournaments and prove your skills against the best players.
           </p>
-          <div className="mt-6">
-            <button className="btn btn-primary">
-              <Plus className="h-5 w-5 mr-2" />
-              Create Tournament
-            </button>
+        </div>
+
+        {/* Create Tournament Button */}
+        <div className="tournaments-create-section">
+          <button className="tournaments-create-btn">
+            <Plus size={16} />
+            Create Tournament
+          </button>
+        </div>
+
+        {/* Filters and Search */}
+        <div className="tournaments-filters">
+          <div className="tournaments-filters-content">
+            {/* Search Bar */}
+            <div className="tournaments-search">
+              <div className="tournaments-search-container">
+                <Search size={20} className="tournaments-search-icon" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="tournaments-search-input"
+                  placeholder="Search tournaments by name, location, or description..."
+                />
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <div className="tournaments-filter-controls">
+              <div className="relative">
+                <Filter size={20} className="tournaments-filter-icon" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="form-select tournaments-filter-select"
+                >
+                  <option value="all">All Tournaments</option>
+                  <option value="registration_open">Registration Open</option>
+                  <option value="registration_closed">Registration Closed</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredTournaments.map((tournament) => (
-            <div
-              key={tournament.id}
-              className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow"
-            >
-              {/* Tournament Header */}
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{tournament.name}</h3>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(tournament.status)}`}>
-                  {formatStatus(tournament.status)}
-                </span>
-              </div>
 
-              {/* Tournament Details */}
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center text-sm text-gray-600">
-                  <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
-                  <span>
-                    {new Date(tournament.start_date).toLocaleDateString()} - {new Date(tournament.end_date).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
-                  <span className="line-clamp-1">{tournament.location}</span>
-                </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <Users className="h-4 w-4 mr-2 flex-shrink-0" />
-                  <span>
-                    {tournament.participantCount}/{tournament.max_participants} participants
-                  </span>
-                </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <Trophy className="h-4 w-4 mr-2 flex-shrink-0" />
-                  <span className="capitalize">{tournament.format.replace('_', ' ')} format</span>
-                </div>
-              </div>
-
-              {/* Tournament Description */}
-              <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                {tournament.description}
-              </p>
-
-              {/* Registration Status */}
-              {tournament.isRegistered ? (
-                <div className="bg-green-50 border border-green-200 rounded-md p-2 text-center text-sm text-green-800 font-medium mb-4">
-                  You are registered for this tournament
-                </div>
-              ) : tournament.status === 'registration_open' && tournament.participantCount < tournament.max_participants ? (
-                <button
-                  onClick={() => handleRegister(tournament.id)}
-                  className="w-full btn btn-primary btn-sm mb-4"
-                >
-                  Register Now
-                </button>
-              ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-md p-2 text-center text-sm text-gray-600 mb-4">
-                  {tournament.participantCount >= tournament.max_participants
-                    ? 'Tournament is full'
-                    : 'Registration closed'}
-                </div>
-              )}
-
-              {/* View Details Button */}
-              <button className="w-full btn btn-secondary btn-sm">
-                View Details
+        {/* Tournaments Grid */}
+        {filteredTournaments.length === 0 ? (
+          <div className="tournaments-empty">
+            <Trophy size={48} className="tournaments-empty-icon" />
+            <h3 className="tournaments-empty-title">
+              {searchQuery || statusFilter !== 'all' ? 'No tournaments found' : 'No tournaments available'}
+            </h3>
+            <p className="tournaments-empty-description">
+              {searchQuery || statusFilter !== 'all' 
+                ? 'Try adjusting your search or filter criteria.'
+                : 'Be the first to create a tournament and bring players together!'
+              }
+            </p>
+            {!searchQuery && statusFilter === 'all' && (
+              <button className="tournaments-empty-btn">
+                <Plus size={16} />
+                Create First Tournament
               </button>
-            </div>
-          ))}
-        </div>
-      )}
+            )}
+          </div>
+        ) : (
+          <div className="tournaments-grid">
+            {filteredTournaments.map((tournament) => (
+              <div
+                key={tournament.id}
+                className="tournament-card-minimal"
+              >
+                {/* Header with Title and Status */}
+                <div className="tournament-card-header">
+                  <div className="tournament-card-title-section">
+                    <h3 className="tournament-card-title">{tournament.name}</h3>
+                    <div 
+                      className="tournament-card-status"
+                      style={{ 
+                        backgroundColor: `${tournament.status === 'registration_open' ? 'rgba(0, 255, 170, 0.2)' : 
+                                          tournament.status === 'in_progress' ? 'rgba(0, 212, 255, 0.2)' : 
+                                          'rgba(255, 149, 0, 0.2)'}`,
+                        color: tournament.status === 'registration_open' ? 'var(--success-green)' : 
+                              tournament.status === 'in_progress' ? 'var(--quantum-cyan)' : 
+                              'var(--warning-orange)'
+                      }}
+                    >
+                      {formatStatus(tournament.status)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Essential Info */}
+                <div className="tournament-card-info">
+                  <div className="tournament-card-info-item">
+                    <Calendar size={14} />
+                    <span>{new Date(tournament.start_date).toLocaleDateString()}</span>
+                  </div>
+                  <div className="tournament-card-info-item">
+                    <MapPin size={14} />
+                    <span>{tournament.location.split(',')[0]}</span>
+                  </div>
+                  <div className="tournament-card-info-item">
+                    <Users size={14} />
+                    <span>{tournament.participantCount}/{tournament.max_participants}</span>
+                  </div>
+                </div>
+
+                {/* Registration Status Indicator */}
+                {tournament.isRegistered && (
+                  <div className="tournament-card-registered">
+                    <Trophy size={14} />
+                    <span>Registered</span>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="tournament-card-actions">
+                  <button className="tournament-card-btn tournament-card-btn-secondary">
+                    Details
+                  </button>
+
+                  {tournament.status === 'registration_open' && 
+                   !tournament.isRegistered && 
+                   tournament.participantCount < tournament.max_participants && (
+                    <button
+                      onClick={() => handleRegister(tournament.id)}
+                      className="tournament-card-btn tournament-card-btn-primary"
+                    >
+                      Register
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -99,174 +99,186 @@ export const ProfileForm: React.FC = () => {
   }
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-6 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Profile Settings</h2>
-
-      {successMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-800 rounded-md p-4 mb-6">
-          {successMessage}
-        </div>
-      )}
-
-      {errorMessage && (
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 mb-6">
-          {errorMessage}
-        </div>
-      )}
-
-      <div className="flex flex-col md:flex-row gap-8 mb-8">
-        {/* Profile Picture */}
-        <div className="flex flex-col items-center">
-          <div className="relative">
-            {profile.profile_picture_url ? (
-              <img
-                src={profile.profile_picture_url}
-                alt={profile.username}
-                className="w-32 h-32 rounded-full object-cover border-2 border-gray-200"
-              />
-            ) : (
-              <div className="w-32 h-32 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 text-4xl font-bold border-2 border-gray-200">
-                {profile.username.charAt(0).toUpperCase()}
+    <div className="profile-page">
+      <div className="profile-container">
+        <div className="profile-card">
+          <div className="profile-header">
+            <div className="profile-header-info">
+              <h1>Profile Settings</h1>
+              <p>Manage your personal information and preferences</p>
+            </div>
+            
+            {successMessage && (
+              <div className="profile-success-message">
+                <div className="profile-success-content">
+                  <Save size={20} />
+                  <span>{successMessage}</span>
+                </div>
               </div>
             )}
-            <label
-              htmlFor="profile-picture"
-              className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors"
-            >
-              <Camera className="h-5 w-5" />
-            </label>
-            <input
-              type="file"
-              id="profile-picture"
-              accept="image/*"
-              className="hidden"
-              onChange={handleProfilePictureChange}
-              disabled={isUploading}
-            />
-          </div>
-          {isUploading && (
-            <div className="mt-2 text-sm text-gray-600 flex items-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-              Uploading...
-            </div>
-          )}
-        </div>
 
-        {/* Profile Stats */}
-        <div className="flex-1">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="text-sm text-gray-500">ELO Rating</div>
-              <div className="text-2xl font-bold text-gray-900">{profile.elo_rating}</div>
+            {errorMessage && (
+              <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 mb-6">
+                {errorMessage}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col md:flex-row gap-8 mb-8">
+            {/* Profile Picture */}
+            <div className="profile-picture-section">
+              <div className="profile-picture-container">
+                {profile.profile_picture_url ? (
+                  <img
+                    src={profile.profile_picture_url}
+                    alt={profile.username}
+                    className="profile-picture"
+                  />
+                ) : (
+                  <div className="profile-picture-placeholder">
+                    {profile.username.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <label
+                  htmlFor="profile-picture"
+                  className="profile-picture-edit"
+                >
+                  <Camera size={20} />
+                </label>
+                <input
+                  type="file"
+                  id="profile-picture"
+                  accept="image/*"
+                  className="profile-hidden-input"
+                  onChange={handleProfilePictureChange}
+                  disabled={isUploading}
+                />
+              </div>
+              {isUploading && (
+                <div className="mt-2 text-sm text-gray-600 flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                  Uploading...
+                </div>
+              )}
             </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="text-sm text-gray-500">Matches Played</div>
-              <div className="text-2xl font-bold text-gray-900">{profile.matches_played}</div>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="text-sm text-gray-500">Matches Won</div>
-              <div className="text-2xl font-bold text-gray-900">{profile.matches_won}</div>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="text-sm text-gray-500">Win Rate</div>
-              <div className="text-2xl font-bold text-gray-900">
-                {profile.matches_played > 0
-                  ? `${Math.round((profile.matches_won / profile.matches_played) * 100)}%`
-                  : '0%'}
+
+            {/* Profile Stats */}
+            <div className="flex-1">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-500">ELO Rating</div>
+                  <div className="text-2xl font-bold text-gray-900">{profile.elo_rating}</div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-500">Matches Played</div>
+                  <div className="text-2xl font-bold text-gray-900">{profile.matches_played}</div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-500">Matches Won</div>
+                  <div className="text-2xl font-bold text-gray-900">{profile.matches_won}</div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-500">Win Rate</div>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {profile.matches_played > 0
+                      ? `${Math.round((profile.matches_won / profile.matches_played) * 100)}%`
+                      : '0%'}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="profile-form">
+            {/* Username */}
+            <div className="profile-form-group">
+              <label htmlFor="username" className="profile-form-label">
+                <User size={16} className="inline mr-1" />
+                Username
+              </label>
+              <input
+                {...register('username')}
+                type="text"
+                id="username"
+                className="profile-form-input"
+              />
+              {errors.username && (
+                <p className="mt-1 text-sm text-red-600">{errors.username.message}</p>
+              )}
+            </div>
+
+            {/* Skill Level */}
+            <div className="profile-form-group">
+              <label htmlFor="skill_level" className="profile-form-label">
+                Skill Level
+              </label>
+              <select
+                {...register('skill_level')}
+                id="skill_level"
+                className="profile-form-input"
+              >
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+                <option value="expert">Expert</option>
+              </select>
+              {errors.skill_level && (
+                <p className="mt-1 text-sm text-red-600">{errors.skill_level.message}</p>
+              )}
+            </div>
+
+            {/* Bio */}
+            <div className="profile-form-group">
+              <label htmlFor="bio" className="profile-form-label">
+                Bio
+              </label>
+              <textarea
+                {...register('bio')}
+                id="bio"
+                rows={4}
+                className="profile-form-textarea"
+                placeholder="Tell others about yourself..."
+              />
+              {errors.bio && (
+                <p className="mt-1 text-sm text-red-600">{errors.bio.message}</p>
+              )}
+              <p className="mt-1 text-sm text-gray-500">
+                {(profile.bio?.length || 0)}/200 characters
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={() => reset()}
+                className="profile-cancel-btn flex-1"
+                disabled={isSubmitting || !isDirty}
+              >
+                <X size={16} />
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || !isDirty}
+                className="profile-save-btn flex-1"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="loading-spinner w-4 h-4 mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Username */}
-        <div>
-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-            <User className="inline h-4 w-4 mr-1" />
-            Username
-          </label>
-          <input
-            {...register('username')}
-            type="text"
-            id="username"
-            className="form-input"
-          />
-          {errors.username && (
-            <p className="mt-1 text-sm text-red-600">{errors.username.message}</p>
-          )}
-        </div>
-
-        {/* Skill Level */}
-        <div>
-          <label htmlFor="skill_level" className="block text-sm font-medium text-gray-700 mb-2">
-            Skill Level
-          </label>
-          <select
-            {...register('skill_level')}
-            id="skill_level"
-            className="form-input"
-          >
-            <option value="beginner">Beginner</option>
-            <option value="intermediate">Intermediate</option>
-            <option value="advanced">Advanced</option>
-            <option value="expert">Expert</option>
-          </select>
-          {errors.skill_level && (
-            <p className="mt-1 text-sm text-red-600">{errors.skill_level.message}</p>
-          )}
-        </div>
-
-        {/* Bio */}
-        <div>
-          <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
-            Bio
-          </label>
-          <textarea
-            {...register('bio')}
-            id="bio"
-            rows={4}
-            className="form-input"
-            placeholder="Tell others about yourself..."
-          />
-          {errors.bio && (
-            <p className="mt-1 text-sm text-red-600">{errors.bio.message}</p>
-          )}
-          <p className="mt-1 text-sm text-gray-500">
-            {(profile.bio?.length || 0)}/200 characters
-          </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex space-x-3 pt-4">
-          <button
-            type="button"
-            onClick={() => reset()}
-            className="flex-1 btn btn-secondary"
-            disabled={isSubmitting || !isDirty}
-          >
-            <X className="h-4 w-4 mr-2" />
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting || !isDirty}
-            className="flex-1 btn btn-primary"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
-              </>
-            )}
-          </button>
-        </div>
-      </form>
     </div>
   )
 }

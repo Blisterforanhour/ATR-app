@@ -28,6 +28,8 @@ const Sidebar: React.FC = () => {
     { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },
     { id: 'matches', label: 'My Matches', icon: Swords, path: '/matches' },
     { id: 'tournaments', label: 'Tournaments', icon: Trophy, path: '/tournaments' },
+    { id: 'umpire', label: 'Live Scoring', icon: Gavel, path: '/umpire' },
+    { id: 'rankings', label: 'Ratings & Rankings', icon: BarChart3, path: '/rankings' },
     { id: 'profile', label: 'Profile', icon: Settings, path: '/profile' },
   ];
 

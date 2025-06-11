@@ -15,6 +15,8 @@ import TournamentsPage from './pages/TournamentsPage';
 import ProfilePage from './pages/ProfilePage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import RankingsPage from './pages/RankingsPage';
+import UmpirePage from './pages/UmpirePage';
 
 // Import core styles only
 import './styles/base.css';
@@ -107,6 +109,8 @@ function App() {
               <Route path="/matches" element={<MatchesPage />} />
               <Route path="/tournaments" element={<TournamentsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/rankings" element={<RankingsPage />} />
+              <Route path="/umpire" element={<UmpirePage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
