@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
-import { Eye, EyeOff, Mail, Lock, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, Loader2, AlertCircle } from 'lucide-react'
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -28,6 +28,19 @@ export const LoginForm: React.FC = () => {
     resolver: zodResolver(loginSchema)
   })
 
+  const getErrorMessage = (error: any): string => {
+    if (error?.message?.includes('Invalid login credentials')) {
+      return 'The email or password you entered is incorrect. Please check your credentials and try again.'
+    }
+    if (error?.message?.includes('Email not confirmed')) {
+      return 'Please check your email and click the confirmation link before signing in.'
+    }
+    if (error?.message?.includes('Too many requests')) {
+      return 'Too many login attempts. Please wait a few minutes before trying again.'
+    }
+    return error?.message || 'An unexpected error occurred. Please try again.'
+  }
+
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
     setError(null)
@@ -35,7 +48,7 @@ export const LoginForm: React.FC = () => {
     try {
       await signIn(data.email, data.password)
     } catch (err: any) {
-      setError(err.message)
+      setError(getErrorMessage(err))
     } finally {
       setIsLoading(false)
     }
@@ -56,7 +69,20 @@ export const LoginForm: React.FC = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <p className="text-red-800 text-sm">{error}</p>
+              <div className="flex items-start">
+                <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+                <div>
+                  <p className="text-red-800 text-sm">{error}</p>
+                  {error.includes('email or password you entered is incorrect') && (
+                    <p className="text-red-700 text-xs mt-2">
+                      Don't have an account?{' '}
+                      <Link to="/signup" className="underline hover:no-underline">
+                        Sign up here
+                      </Link>
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
