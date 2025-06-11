@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { DataInitializationService } from './services/DataInitializationService';
 import Sidebar from './components/layout/Sidebar';
 import { initSentry } from './lib/sentry';
@@ -100,39 +101,43 @@ function App() {
   // For authenticated users, show the app layout with sidebar
   if (user) {
     return (
-      <ThemeProvider>
-        <div className="app-layout">
-          <Sidebar />
-          <main className="app-main">
-            <Routes>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/matches" element={<MatchesPage />} />
-              <Route path="/tournaments" element={<TournamentsPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/rankings" element={<RankingsPage />} />
-              <Route path="/umpire" element={<UmpirePage />} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-          </main>
-        </div>
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <div className="app-layout">
+            <Sidebar />
+            <main className="app-main">
+              <Routes>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/matches" element={<MatchesPage />} />
+                <Route path="/tournaments" element={<TournamentsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/rankings" element={<RankingsPage />} />
+                <Route path="/umpire" element={<UmpirePage />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </main>
+          </div>
+        </ThemeProvider>
+      </AuthProvider>
     );
   }
 
   // For unauthenticated users, show auth routes
   return (
-    <ThemeProvider>
-      <div className="min-h-screen">
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </div>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <div className="min-h-screen">
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignUpPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </div>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 
