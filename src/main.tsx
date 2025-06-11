@@ -24,6 +24,25 @@ supabase.auth.onAuthStateChange((event, session) => {
   }
 })
 
+// Preload critical resources
+const preloadResources = () => {
+  // Preload important images or other resources
+  const preloadLinks = [
+    // Add any critical resources here
+  ];
+  
+  preloadLinks.forEach(url => {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = url.endsWith('.css') ? 'style' : 'image';
+    link.href = url;
+    document.head.appendChild(link);
+  });
+};
+
+// Execute preloading
+preloadResources();
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

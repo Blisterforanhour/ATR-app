@@ -30,7 +30,8 @@ export const ProfileForm: React.FC = () => {
     register,
     handleSubmit,
     formState: { errors, isDirty },
-    reset
+    reset,
+    watch
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -39,6 +40,8 @@ export const ProfileForm: React.FC = () => {
       skill_level: profile?.skill_level || 'beginner',
     }
   })
+
+  const watchedBio = watch('bio') || '';
 
   const onSubmit = async (data: ProfileFormData) => {
     setIsSubmitting(true)
@@ -92,8 +95,8 @@ export const ProfileForm: React.FC = () => {
 
   if (!profile) {
     return (
-      <div className="text-center py-12">
-        <p>Loading profile...</p>
+      <div className="flex items-center justify-center h-64">
+        <div className="loading-spinner"></div>
       </div>
     )
   }
@@ -124,7 +127,7 @@ export const ProfileForm: React.FC = () => {
             )}
           </div>
 
-          <div className="flex flex-col md:flex-row gap-8 mb-8">
+          <div className="profile-main-content">
             {/* Profile Picture */}
             <div className="profile-picture-section">
               <div className="profile-picture-container">
@@ -155,102 +158,103 @@ export const ProfileForm: React.FC = () => {
                 />
               </div>
               {isUploading && (
-                <div className="mt-2 text-sm text-gray-600 flex items-center">
+                <div className="mt-2 text-sm text-gray-600 flex items-center justify-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
                   Uploading...
                 </div>
               )}
             </div>
-          </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="profile-form">
-            {/* Username */}
-            <div className="profile-form-group">
-              <label htmlFor="username" className="profile-form-label">
-                <User size={16} className="inline mr-1" />
-                Username
-              </label>
-              <input
-                {...register('username')}
-                type="text"
-                id="username"
-                className="profile-form-input"
-              />
-              {errors.username && (
-                <p className="mt-1 text-sm text-red-600">{errors.username.message}</p>
-              )}
-            </div>
-
-            {/* Skill Level */}
-            <div className="profile-form-group">
-              <label htmlFor="skill_level" className="profile-form-label">
-                Skill Level
-              </label>
-              <select
-                {...register('skill_level')}
-                id="skill_level"
-                className="profile-form-input"
-              >
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-                <option value="expert">Expert</option>
-              </select>
-              {errors.skill_level && (
-                <p className="mt-1 text-sm text-red-600">{errors.skill_level.message}</p>
-              )}
-            </div>
-
-            {/* Bio */}
-            <div className="profile-form-group">
-              <label htmlFor="bio" className="profile-form-label">
-                Bio
-              </label>
-              <textarea
-                {...register('bio')}
-                id="bio"
-                rows={4}
-                className="profile-form-textarea"
-                placeholder="Tell others about yourself..."
-              />
-              {errors.bio && (
-                <p className="mt-1 text-sm text-red-600">{errors.bio.message}</p>
-              )}
-              <p className="mt-1 text-sm text-gray-500">
-                {(profile.bio?.length || 0)}/200 characters
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={() => reset()}
-                className="profile-cancel-btn flex-1"
-                disabled={isSubmitting || !isDirty}
-              >
-                <X size={16} />
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || !isDirty}
-                className="profile-save-btn flex-1"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="loading-spinner w-4 h-4 mr-2"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} />
-                    Save Changes
-                  </>
+            <form onSubmit={handleSubmit(onSubmit)} className="profile-form">
+              {/* Username */}
+              <div className="profile-form-group">
+                <label htmlFor="username" className="profile-form-label">
+                  <User size={16} className="inline mr-1" />
+                  Username
+                </label>
+                <input
+                  {...register('username')}
+                  type="text"
+                  id="username"
+                  className="profile-form-input"
+                  placeholder="Choose a username"
+                />
+                {errors.username && (
+                  <p className="mt-1 text-sm text-red-600">{errors.username.message}</p>
                 )}
-              </button>
-            </div>
-          </form>
+              </div>
+
+              {/* Skill Level */}
+              <div className="profile-form-group">
+                <label htmlFor="skill_level" className="profile-form-label">
+                  Skill Level
+                </label>
+                <select
+                  {...register('skill_level')}
+                  id="skill_level"
+                  className="profile-form-input"
+                >
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                  <option value="expert">Expert</option>
+                </select>
+                {errors.skill_level && (
+                  <p className="mt-1 text-sm text-red-600">{errors.skill_level.message}</p>
+                )}
+              </div>
+
+              {/* Bio */}
+              <div className="profile-form-group">
+                <label htmlFor="bio" className="profile-form-label">
+                  Bio
+                </label>
+                <textarea
+                  {...register('bio')}
+                  id="bio"
+                  rows={4}
+                  className="profile-form-textarea"
+                  placeholder="Tell others about yourself..."
+                />
+                {errors.bio && (
+                  <p className="mt-1 text-sm text-red-600">{errors.bio.message}</p>
+                )}
+                <p className="mt-1 text-sm text-gray-500">
+                  {watchedBio.length}/200 characters
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="profile-actions">
+                <button
+                  type="button"
+                  onClick={() => reset()}
+                  className="profile-cancel-btn"
+                  disabled={isSubmitting || !isDirty}
+                >
+                  <X size={16} />
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !isDirty}
+                  className="profile-save-btn"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="loading-spinner w-4 h-4 mr-2"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      Save Changes
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
