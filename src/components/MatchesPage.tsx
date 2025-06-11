@@ -292,28 +292,6 @@ const MatchesPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="matches-stats">
-          <div className="matches-stat-card">
-            <div className="matches-stat-value">{getTimeFilterCount('upcoming')}</div>
-            <div className="matches-stat-label">Upcoming</div>
-          </div>
-          <div className="matches-stat-card">
-            <div className="matches-stat-value">{getFilterCount('completed')}</div>
-            <div className="matches-stat-label">Completed</div>
-          </div>
-          <div className="matches-stat-card">
-            <div className="matches-stat-value">{getFilterCount('pending')}</div>
-            <div className="matches-stat-label">Pending</div>
-          </div>
-          <div className="matches-stat-card">
-            <div className="matches-stat-value">
-              {matches.length > 0 ? Math.round((getFilterCount('completed') / matches.length) * 100) : 0}%
-            </div>
-            <div className="matches-stat-label">Completion Rate</div>
-          </div>
-        </div>
-
         {/* Upcoming Matches Section with Accordion */}
         {upcomingMatches.length > 0 && (
           <div className="matches-section">
