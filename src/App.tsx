@@ -1,92 +1,86 @@
-import React, { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore } from './stores/authStore';
-import { initSentry } from './lib/sentry';
-import { setApiAuthToken } from './lib/aws';
+import React, { useState, useEffect } from 'react';
+import { AuthProvider } from './contexts/AuthContext';
+import { DataInitializationService } from './services/DataInitializationService';
+import AppLayout from './components/AppLayout';
 
-// Import CSS
+// Import all CSS files
 import './index.css';
+import './styles/base.css';
+import './styles/dark-mode.css';
+import './styles/light-mode.css';
+import './styles/animations.css';
+import './styles/shared.css';
+import './styles/sidebar.css';
+import './styles/rankings.css';
 
-// Auth components
-import { LoginForm } from './components/auth/LoginForm';
-import { SignUpForm } from './components/auth/SignUpForm';
+// Import page-specific styles
+import './styles/pages/login.css';
+import './styles/pages/onboarding.css';
+import './styles/pages/dashboard.css';
+import './styles/pages/tournaments.css';
+import './styles/pages/matches.css';
+import './styles/pages/profile.css';
+import './styles/pages/umpire.css';
 
-// Main components
-import { Dashboard } from './components/dashboard/Dashboard';
-import { MatchList } from './components/matches/MatchList';
-import { ProfileForm } from './components/profile/ProfileForm';
-import { TournamentList } from './components/tournaments/TournamentList';
+// Import component-specific styles
+import './styles/components/multi-select-calendar.css';
+import './styles/components/tournament-form.css';
 
-// Initialize Sentry
-initSentry();
+function App() {
+  const [isDataReady, setIsDataReady] = useState(false);
+  const [initializationError, setInitializationError] = useState<string | null>(null);
 
-// Protected route wrapper
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuthStore();
-  
-  if (loading) {
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        await DataInitializationService.initializeAllMockData();
+        setIsDataReady(true);
+      } catch (error) {
+        console.error('Data initialization failed:', error);
+        setInitializationError('Failed to initialize application data. Please refresh the page.');
+      }
+    };
+
+    initializeData();
+  }, []);
+
+  if (initializationError) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-red-50">
+        <div className="text-center p-8">
+          <div className="text-red-600 text-xl mb-4">⚠️ Initialization Error</div>
+          <p className="text-red-700 mb-4">{initializationError}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Refresh Page
+          </button>
+        </div>
       </div>
     );
   }
-  
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return <>{children}</>;
-};
 
-function App() {
-  const { initialize, session } = useAuthStore();
-  
-  useEffect(() => {
-    initialize();
-    
-    // Set API auth token when session changes
-    if (session?.access_token) {
-      setApiAuthToken(session.access_token);
-    }
-  }, [initialize, session]);
+  if (!isDataReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="loading text-center">
+          <div className="loading-spinner mx-auto mb-4"></div>
+          <p className="text-lg font-medium" style={{ color: 'var(--text-standard)' }}>
+            Initializing Africa Tennis...
+          </p>
+          <p className="text-sm mt-2" style={{ color: 'var(--text-subtle)' }}>
+            Setting up your tennis experience
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Routes>
-        {/* Auth Routes */}
-        <Route path="/login" element={<LoginForm />} />
-        <Route path="/signup" element={<SignUpForm />} />
-        
-        {/* Protected Routes */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/matches" element={
-          <ProtectedRoute>
-            <MatchList />
-          </ProtectedRoute>
-        } />
-        <Route path="/tournaments" element={
-          <ProtectedRoute>
-            <TournamentList />
-          </ProtectedRoute>
-        } />
-        <Route path="/profile" element={
-          <ProtectedRoute>
-            <ProfileForm />
-          </ProtectedRoute>
-        } />
-        
-        {/* Redirect root to dashboard or login */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        
-        {/* Catch all route */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </div>
+    <AuthProvider>
+      <AppLayout />
+    </AuthProvider>
   );
 }
 
