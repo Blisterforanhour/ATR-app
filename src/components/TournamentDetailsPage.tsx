@@ -177,6 +177,14 @@ const TournamentDetailsPage: React.FC<TournamentDetailsPageProps> = ({
                 </span>
               </div>
             )}
+            {tournament.format === 'double_elimination' && (
+              <div className="tournament-info-item">
+                <span className="tournament-info-label">Total Matches:</span>
+                <span className="tournament-info-value">
+                  {participants.length > 0 ? (participants.length - 1) + (participants.length - 2) + 1 : 0}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -238,6 +246,11 @@ const TournamentDetailsPage: React.FC<TournamentDetailsPageProps> = ({
               <Trophy size={20} className="inline-icon" />
               Single Elimination Format
             </>
+          ) : tournament.format === 'double_elimination' ? (
+            <>
+              <Award size={20} className="inline-icon" />
+              Double Elimination Format
+            </>
           ) : tournament.format === 'round_robin' ? (
             <>
               <RotateCcw size={20} className="inline-icon" />
@@ -261,6 +274,21 @@ const TournamentDetailsPage: React.FC<TournamentDetailsPageProps> = ({
               <li>Each match has one winner who advances to the next round</li>
               <li>The tournament champion is the last player standing</li>
               <li>Fast-paced format with clear progression</li>
+            </ul>
+          </div>
+        )}
+        
+        {tournament.format === 'double_elimination' && (
+          <div className="format-explanation">
+            <p>
+              In this double elimination tournament, players must lose twice to be eliminated. This format provides second chances while maintaining competitive structure.
+            </p>
+            <ul className="format-features">
+              <li>Players compete in both winners and losers brackets</li>
+              <li>Must lose twice to be eliminated from the tournament</li>
+              <li>Losers bracket provides comeback opportunities</li>
+              <li>Grand final may require bracket reset if losers bracket winner wins</li>
+              <li>More forgiving format ensuring the best player wins</li>
             </ul>
           </div>
         )}
@@ -477,74 +505,105 @@ const TournamentDetailsPage: React.FC<TournamentDetailsPageProps> = ({
             </div>
 
             {/* Group matches by round */}
-            {Array.from(new Set(matches.map(m => m.round))).sort().map(round => (
-              <div key={round} className="tournament-bracket-round">
-                <h4 className="tournament-bracket-round-title">
-                  {round === Math.max(...matches.map(m => m.round)) ? 'Final' :
-                   round === Math.max(...matches.map(m => m.round)) - 1 ? 'Semi-Final' :
-                   `Round ${round}`}
-                </h4>
+            {Array.from(new Set(matches.map(m => m.round))).sort().map(round => {
+              const roundMatches = matches.filter(m => m.round === round);
+              const maxRound = Math.max(...matches.map(m => m.round));
+              
+              // Determine round name based on format
+              let roundName = `Round ${round}`;
+              
+              if (tournament.format === 'single_elimination') {
+                if (round === maxRound) {
+                  roundName = 'Final';
+                } else if (round === maxRound - 1) {
+                  roundName = 'Semi-Final';
+                }
+              } else if (tournament.format === 'double_elimination') {
+                const winnersRounds = Math.ceil(Math.log2(tournament.maxParticipants));
                 
-                <div className="tournament-bracket-matches">
-                  {matches
-                    .filter(m => m.round === round)
-                    .sort((a, b) => a.matchNumber - b.matchNumber)
-                    .map(match => {
-                      const player1 = match.player1Id ? UserService.getPlayerById(match.player1Id) : null;
-                      const player2 = match.player2Id ? UserService.getPlayerById(match.player2Id) : null;
-                      
-                      return (
-                        <div key={match.id} className={`tournament-bracket-match ${match.status}`}>
-                          <div className="tournament-bracket-match-header">
-                            <span className="tournament-bracket-match-number">
-                              Match {match.matchNumber}
-                            </span>
-                            <div className={`tournament-bracket-match-status ${match.status}`}>
-                              {match.status === 'completed' && <CheckCircle size={14} />}
-                              {match.status === 'in_progress' && <Play size={14} />}
-                              {match.status === 'pending' && <Clock size={14} />}
-                            </div>
-                          </div>
-                          
-                          <div className="tournament-bracket-match-players">
-                            <div className={`tournament-bracket-player ${match.winnerId === match.player1Id ? 'winner' : ''}`}>
-                              <span className="tournament-bracket-player-name">
-                                {player1?.name || 'TBD'}
+                if (round <= winnersRounds) {
+                  // Winners bracket
+                  if (round === winnersRounds) {
+                    roundName = 'Winners Final';
+                  } else if (round === winnersRounds - 1) {
+                    roundName = 'Winners Semi-Final';
+                  } else {
+                    roundName = `Winners Round ${round}`;
+                  }
+                } else if (round === maxRound) {
+                  roundName = 'Grand Final';
+                } else if (round === maxRound - 1) {
+                  roundName = 'Grand Final Reset';
+                } else {
+                  const losersRound = round - winnersRounds;
+                  roundName = `Losers Round ${losersRound}`;
+                }
+              }
+
+              return (
+                <div key={round} className="tournament-bracket-round">
+                  <h4 className="tournament-bracket-round-title">{roundName}</h4>
+                  
+                  <div className="tournament-bracket-matches">
+                    {roundMatches
+                      .sort((a, b) => a.matchNumber - b.matchNumber)
+                      .map(match => {
+                        const player1 = match.player1Id ? UserService.getPlayerById(match.player1Id) : null;
+                        const player2 = match.player2Id ? UserService.getPlayerById(match.player2Id) : null;
+                        
+                        return (
+                          <div key={match.id} className={`tournament-bracket-match ${match.status}`}>
+                            <div className="tournament-bracket-match-header">
+                              <span className="tournament-bracket-match-number">
+                                Match {match.matchNumber}
                               </span>
-                              {match.score && match.winnerId === match.player1Id && (
-                                <Award size={14} className="tournament-bracket-winner-icon" />
-                              )}
+                              <div className={`tournament-bracket-match-status ${match.status}`}>
+                                {match.status === 'completed' && <CheckCircle size={14} />}
+                                {match.status === 'in_progress' && <Play size={14} />}
+                                {match.status === 'pending' && <Clock size={14} />}
+                              </div>
                             </div>
                             
-                            <div className="tournament-bracket-vs">vs</div>
+                            <div className="tournament-bracket-match-players">
+                              <div className={`tournament-bracket-player ${match.winnerId === match.player1Id ? 'winner' : ''}`}>
+                                <span className="tournament-bracket-player-name">
+                                  {player1?.name || 'TBD'}
+                                </span>
+                                {match.score && match.winnerId === match.player1Id && (
+                                  <Award size={14} className="tournament-bracket-winner-icon" />
+                                )}
+                              </div>
+                              
+                              <div className="tournament-bracket-vs">vs</div>
+                              
+                              <div className={`tournament-bracket-player ${match.winnerId === match.player2Id ? 'winner' : ''}`}>
+                                <span className="tournament-bracket-player-name">
+                                  {player2?.name || 'TBD'}
+                                </span>
+                                {match.score && match.winnerId === match.player2Id && (
+                                  <Award size={14} className="tournament-bracket-winner-icon" />
+                                )}
+                              </div>
+                            </div>
                             
-                            <div className={`tournament-bracket-player ${match.winnerId === match.player2Id ? 'winner' : ''}`}>
-                              <span className="tournament-bracket-player-name">
-                                {player2?.name || 'TBD'}
-                              </span>
-                              {match.score && match.winnerId === match.player2Id && (
-                                <Award size={14} className="tournament-bracket-winner-icon" />
-                              )}
-                            </div>
+                            {match.score && (
+                              <div className="tournament-bracket-match-score">
+                                {match.score}
+                              </div>
+                            )}
+                            
+                            {match.scheduledDate && (
+                              <div className="tournament-bracket-match-time">
+                                {new Date(match.scheduledDate).toLocaleString()}
+                              </div>
+                            )}
                           </div>
-                          
-                          {match.score && (
-                            <div className="tournament-bracket-match-score">
-                              {match.score}
-                            </div>
-                          )}
-                          
-                          {match.scheduledDate && (
-                            <div className="tournament-bracket-match-time">
-                              {new Date(match.scheduledDate).toLocaleString()}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="tournament-bracket-empty">

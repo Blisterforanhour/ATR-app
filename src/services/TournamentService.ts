@@ -120,6 +120,8 @@ export class TournamentService {
     let newMatches: TournamentMatch[] = [];
     if (tournament.format === 'single_elimination') {
       newMatches = this.generateSingleEliminationBracket(tournament, players);
+    } else if (tournament.format === 'double_elimination') {
+      newMatches = this.generateDoubleEliminationBracket(tournament, players);
     } else if (tournament.format === 'round_robin') {
       newMatches = this.generateRoundRobinBracket(tournament, players);
     }
@@ -142,7 +144,7 @@ export class TournamentService {
     const bracketSize = Math.pow(2, Math.ceil(Math.log2(players.length)));
     const totalRounds = Math.ceil(Math.log2(bracketSize));
     
-    console.log(`Generating bracket for ${players.length} players, bracket size: ${bracketSize}, rounds: ${totalRounds}`);
+    console.log(`Generating single elimination bracket for ${players.length} players, bracket size: ${bracketSize}, rounds: ${totalRounds}`);
 
     // Create a seeded bracket array
     const bracket: (User | null)[] = new Array(bracketSize).fill(null);
@@ -201,7 +203,133 @@ export class TournamentService {
       }
     }
 
-    console.log(`Generated ${matches.length} matches for tournament ${tournament.name}`);
+    console.log(`Generated ${matches.length} matches for single elimination tournament ${tournament.name}`);
+    return matches;
+  }
+
+  private static generateDoubleEliminationBracket(tournament: Tournament, players: User[]): TournamentMatch[] {
+    const matches: TournamentMatch[] = [];
+    
+    // Calculate the bracket size (next power of 2)
+    const bracketSize = Math.pow(2, Math.ceil(Math.log2(players.length)));
+    const winnersRounds = Math.ceil(Math.log2(bracketSize));
+    const losersRounds = (winnersRounds - 1) * 2;
+    
+    console.log(`Generating double elimination bracket for ${players.length} players, bracket size: ${bracketSize}`);
+    console.log(`Winners bracket rounds: ${winnersRounds}, Losers bracket rounds: ${losersRounds}`);
+
+    // Create a seeded bracket array
+    const bracket: (User | null)[] = new Array(bracketSize).fill(null);
+    
+    // Place players in bracket using standard tournament seeding
+    for (let i = 0; i < players.length; i++) {
+      bracket[i] = players[i];
+    }
+
+    // Generate Winners Bracket - Round 1
+    const firstRoundMatches = bracketSize / 2;
+    for (let i = 0; i < firstRoundMatches; i++) {
+      const player1 = bracket[i * 2];
+      const player2 = bracket[i * 2 + 1];
+
+      const match: TournamentMatch = {
+        id: this.generateId('match'),
+        tournamentId: tournament.id,
+        round: 1,
+        matchNumber: i + 1,
+        player1Id: player1?.id,
+        player2Id: player2?.id,
+        status: 'pending',
+        location: tournament.location,
+        umpireId: tournament.umpireId,
+      };
+
+      // If one player is missing (bye), automatically advance the other
+      if (player1 && !player2) {
+        match.winnerId = player1.id;
+        match.status = 'completed';
+        match.score = 'Bye';
+      } else if (!player1 && player2) {
+        match.winnerId = player2.id;
+        match.status = 'completed';
+        match.score = 'Bye';
+      }
+
+      matches.push(match);
+    }
+
+    // Generate remaining Winners Bracket rounds
+    for (let round = 2; round <= winnersRounds; round++) {
+      const matchesInRound = Math.pow(2, winnersRounds - round);
+      for (let i = 0; i < matchesInRound; i++) {
+        const match: TournamentMatch = {
+          id: this.generateId('match'),
+          tournamentId: tournament.id,
+          round,
+          matchNumber: i + 1,
+          status: 'pending',
+          location: tournament.location,
+          umpireId: tournament.umpireId,
+        };
+        matches.push(match);
+      }
+    }
+
+    // Generate Losers Bracket rounds
+    // Losers bracket is more complex as it receives players from winners bracket
+    for (let round = winnersRounds + 1; round <= winnersRounds + losersRounds; round++) {
+      // Calculate matches in this losers bracket round
+      const losersRoundNumber = round - winnersRounds;
+      let matchesInRound: number;
+      
+      if (losersRoundNumber % 2 === 1) {
+        // Odd losers rounds: only losers from winners bracket
+        matchesInRound = Math.pow(2, winnersRounds - Math.ceil(losersRoundNumber / 2) - 1);
+      } else {
+        // Even losers rounds: survivors play each other
+        matchesInRound = Math.pow(2, winnersRounds - (losersRoundNumber / 2) - 1);
+      }
+
+      for (let i = 0; i < matchesInRound; i++) {
+        const match: TournamentMatch = {
+          id: this.generateId('match'),
+          tournamentId: tournament.id,
+          round,
+          matchNumber: i + 1,
+          status: 'pending',
+          location: tournament.location,
+          umpireId: tournament.umpireId,
+        };
+        matches.push(match);
+      }
+    }
+
+    // Generate Grand Final
+    const grandFinalRound = winnersRounds + losersRounds + 1;
+    const grandFinal: TournamentMatch = {
+      id: this.generateId('match'),
+      tournamentId: tournament.id,
+      round: grandFinalRound,
+      matchNumber: 1,
+      status: 'pending',
+      location: tournament.location,
+      umpireId: tournament.umpireId,
+    };
+    matches.push(grandFinal);
+
+    // Generate potential Grand Final Reset (if losers bracket winner beats winners bracket winner)
+    const grandFinalReset: TournamentMatch = {
+      id: this.generateId('match'),
+      tournamentId: tournament.id,
+      round: grandFinalRound + 1,
+      matchNumber: 1,
+      status: 'pending',
+      location: tournament.location,
+      umpireId: tournament.umpireId,
+    };
+    matches.push(grandFinalReset);
+
+    console.log(`Generated ${matches.length} matches for double elimination tournament ${tournament.name}`);
     return matches;
   }
 
@@ -261,6 +389,9 @@ export class TournamentService {
     if (matchIndex < 0) return false;
 
     const match = matches[matchIndex];
+    const tournament = this.getTournamentById(match.tournamentId);
+    if (!tournament) return false;
+
     match.winnerId = winnerId;
     match.score = score;
     match.status = 'completed';
@@ -268,9 +399,11 @@ export class TournamentService {
     matches[matchIndex] = match;
     localStorage.setItem(this.TOURNAMENT_MATCHES_KEY, JSON.stringify(matches));
 
-    // For single elimination, advance winner to next round
-    if (this.getTournamentById(match.tournamentId)?.format === 'single_elimination') {
-      this.advanceWinner(match);
+    // Advance winner based on tournament format
+    if (tournament.format === 'single_elimination') {
+      this.advanceWinnerSingleElimination(match);
+    } else if (tournament.format === 'double_elimination') {
+      this.advanceWinnerDoubleElimination(match);
     }
 
     // Check if tournament is complete
@@ -279,7 +412,7 @@ export class TournamentService {
     return true;
   }
 
-  private static advanceWinner(completedMatch: TournamentMatch): void {
+  private static advanceWinnerSingleElimination(completedMatch: TournamentMatch): void {
     const tournament = this.getTournamentById(completedMatch.tournamentId);
     if (!tournament) return;
 
@@ -310,6 +443,73 @@ export class TournamentService {
     }
   }
 
+  private static advanceWinnerDoubleElimination(completedMatch: TournamentMatch): void {
+    const tournament = this.getTournamentById(completedMatch.tournamentId);
+    if (!tournament) return;
+
+    const allMatches = this.getAllTournamentMatches();
+    const tournamentMatches = allMatches.filter(m => m.tournamentId === completedMatch.tournamentId);
+    
+    const winnersRounds = Math.ceil(Math.log2(tournament.maxParticipants));
+    const isWinnersBracket = completedMatch.round <= winnersRounds;
+    const loserId = completedMatch.player1Id === completedMatch.winnerId ? completedMatch.player2Id : completedMatch.player1Id;
+
+    if (isWinnersBracket) {
+      // Winners bracket: advance winner to next winners round, send loser to losers bracket
+      
+      // Advance winner in winners bracket
+      const nextWinnersRound = completedMatch.round + 1;
+      if (nextWinnersRound <= winnersRounds) {
+        const nextMatchNumber = Math.ceil(completedMatch.matchNumber / 2);
+        const nextMatch = tournamentMatches.find(
+          m => m.round === nextWinnersRound && m.matchNumber === nextMatchNumber
+        );
+
+        if (nextMatch) {
+          if (completedMatch.matchNumber % 2 === 1) {
+            nextMatch.player1Id = completedMatch.winnerId;
+          } else {
+            nextMatch.player2Id = completedMatch.winnerId;
+          }
+        }
+      }
+
+      // Send loser to losers bracket (if not first round)
+      if (completedMatch.round > 1 && loserId) {
+        // Find appropriate losers bracket match
+        const losersRound = winnersRounds + (completedMatch.round - 1) * 2;
+        const losersMatch = tournamentMatches.find(
+          m => m.round === losersRound && !m.player1Id && !m.player2Id
+        );
+
+        if (losersMatch) {
+          if (!losersMatch.player1Id) {
+            losersMatch.player1Id = loserId;
+          } else if (!losersMatch.player2Id) {
+            losersMatch.player2Id = loserId;
+          }
+        }
+      }
+    } else {
+      // Losers bracket: advance winner to next losers round
+      const nextLosersRound = completedMatch.round + 1;
+      const nextMatch = tournamentMatches.find(
+        m => m.round === nextLosersRound && (!m.player1Id || !m.player2Id)
+      );
+
+      if (nextMatch) {
+        if (!nextMatch.player1Id) {
+          nextMatch.player1Id = completedMatch.winnerId;
+        } else if (!nextMatch.player2Id) {
+          nextMatch.player2Id = completedMatch.winnerId;
+        }
+      }
+    }
+
+    // Save updated matches
+    localStorage.setItem(this.TOURNAMENT_MATCHES_KEY, JSON.stringify(allMatches));
+  }
+
   private static checkTournamentCompletion(tournamentId: string): void {
     const tournament = this.getTournamentById(tournamentId);
     if (!tournament) return;
@@ -325,6 +525,37 @@ export class TournamentService {
         tournament.winnerId = finalMatch.winnerId;
         this.updateTournament(tournament);
       }
+    } else if (tournament.format === 'double_elimination') {
+      // For double elimination, check if grand final is completed
+      const maxRound = Math.max(...matches.map(m => m.round));
+      const grandFinal = matches.find(m => m.round === maxRound && m.status === 'completed');
+      
+      if (grandFinal && grandFinal.winnerId) {
+        // Check if grand final reset is needed
+        const winnersRounds = Math.ceil(Math.log2(tournament.maxParticipants));
+        const losersRounds = (winnersRounds - 1) * 2;
+        const expectedGrandFinalRound = winnersRounds + losersRounds + 1;
+        
+        if (grandFinal.round === expectedGrandFinalRound) {
+          // First grand final completed
+          const winnerFromWinners = this.getWinnersBracketFinalWinner(tournamentId);
+          
+          if (grandFinal.winnerId === winnerFromWinners) {
+            // Winners bracket champion won, tournament over
+            tournament.status = 'completed';
+            tournament.winnerId = grandFinal.winnerId;
+            this.updateTournament(tournament);
+          } else {
+            // Losers bracket champion won, need grand final reset
+            // The reset match should already exist, just needs to be played
+          }
+        } else if (grandFinal.round === expectedGrandFinalRound + 1) {
+          // Grand final reset completed
+          tournament.status = 'completed';
+          tournament.winnerId = grandFinal.winnerId;
+          this.updateTournament(tournament);
+        }
+      }
     } else if (tournament.format === 'round_robin') {
       // For round robin, check if all matches are completed
       const allMatchesCompleted = matches.every(m => m.status === 'completed');
@@ -337,6 +568,17 @@ export class TournamentService {
         this.updateTournament(tournament);
       }
     }
+  }
+
+  private static getWinnersBracketFinalWinner(tournamentId: string): string | undefined {
+    const matches = this.getTournamentMatches(tournamentId);
+    const tournament = this.getTournamentById(tournamentId);
+    if (!tournament) return undefined;
+
+    const winnersRounds = Math.ceil(Math.log2(tournament.maxParticipants));
+    const winnersFinal = matches.find(m => m.round === winnersRounds && m.status === 'completed');
+    
+    return winnersFinal?.winnerId;
   }
 
   private static calculateRoundRobinWinner(tournamentId: string): string | undefined {
@@ -523,6 +765,16 @@ export class TournamentService {
     const tournament7Start = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 2 weeks from now
     const tournament7End = new Date(now.getTime() + 16 * 24 * 60 * 60 * 1000); // 16 days from now
 
+    // Tournament 8: Double Elimination - Registration Open
+    const tournament8RegDeadline = new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000); // 8 days from now
+    const tournament8Start = new Date(now.getTime() + 12 * 24 * 60 * 60 * 1000); // 12 days from now
+    const tournament8End = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000); // 15 days from now
+
+    // Tournament 9: Double Elimination - Ready to Start
+    const tournament9RegDeadline = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000); // 2 days ago
+    const tournament9Start = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000); // Tomorrow
+    const tournament9End = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000); // 4 days from now
+
     const mockTournaments: Tournament[] = [
       {
         id: 'tournament_1',
@@ -629,6 +881,36 @@ export class TournamentService {
         umpireId: 'mock_2',
         status: 'registration_open',
         createdAt: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 'tournament_8',
+        name: 'Double Elimination Championship',
+        description: 'Experience the most forgiving tournament format! Players get a second chance with our double elimination system. Featuring winners and losers brackets for maximum competitive play.',
+        organizerId: 'mock_1',
+        registrationDeadline: tournament8RegDeadline.toISOString(),
+        startDate: tournament8Start.toISOString(),
+        endDate: tournament8End.toISOString(),
+        format: 'double_elimination',
+        location: 'Premier Tennis Complex, Sandton',
+        maxParticipants: 16,
+        umpireId: 'mock_3',
+        status: 'registration_open',
+        createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: 'tournament_9',
+        name: 'Second Chance Showdown',
+        description: 'Double elimination tournament ready to begin! Players must lose twice to be eliminated, providing exciting comeback opportunities and ensuring the best player wins.',
+        organizerId: 'mock_2',
+        registrationDeadline: tournament9RegDeadline.toISOString(),
+        startDate: tournament9Start.toISOString(),
+        endDate: tournament9End.toISOString(),
+        format: 'double_elimination',
+        location: 'Elite Sports Arena, Pretoria',
+        maxParticipants: 8,
+        umpireId: 'mock_1',
+        status: 'registration_closed',
+        createdAt: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString(),
       }
     ];
 
@@ -704,7 +986,29 @@ export class TournamentService {
       { id: 'part_7_3', tournamentId: 'tournament_7', playerId: 'mock_7', registeredAt: new Date(now.getTime() - 18 * 60 * 60 * 1000).toISOString() },
       { id: 'part_7_4', tournamentId: 'tournament_7', playerId: 'mock_9', registeredAt: new Date(now.getTime() - 15 * 60 * 60 * 1000).toISOString() },
       { id: 'part_7_5', tournamentId: 'tournament_7', playerId: 'mock_11', registeredAt: new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString() },
-      { id: 'part_7_6', tournamentId: 'tournament_7', playerId: 'mock_12', registeredAt: new Date(now.getTime() - 8 * 60 * 60 * 1000).toISOString() }
+      { id: 'part_7_6', tournamentId: 'tournament_7', playerId: 'mock_12', registeredAt: new Date(now.getTime() - 8 * 60 * 60 * 1000).toISOString() },
+
+      // Tournament 8 participants (Double Elimination Championship) - 10/16 spots filled
+      { id: 'part_8_1', tournamentId: 'tournament_8', playerId: 'mock_1', registeredAt: new Date(now.getTime() - 1.5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_8_2', tournamentId: 'tournament_8', playerId: 'mock_3', registeredAt: new Date(now.getTime() - 1.4 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_8_3', tournamentId: 'tournament_8', playerId: 'mock_4', registeredAt: new Date(now.getTime() - 1.3 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_8_4', tournamentId: 'tournament_8', playerId: 'mock_6', registeredAt: new Date(now.getTime() - 1.2 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_8_5', tournamentId: 'tournament_8', playerId: 'mock_7', registeredAt: new Date(now.getTime() - 1.1 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_8_6', tournamentId: 'tournament_8', playerId: 'mock_8', registeredAt: new Date(now.getTime() - 1.0 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_8_7', tournamentId: 'tournament_8', playerId: 'mock_9', registeredAt: new Date(now.getTime() - 20 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_8_8', tournamentId: 'tournament_8', playerId: 'mock_10', registeredAt: new Date(now.getTime() - 18 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_8_9', tournamentId: 'tournament_8', playerId: 'mock_11', registeredAt: new Date(now.getTime() - 16 * 60 * 60 * 1000).toISOString() },
+      { id: 'part_8_10', tournamentId: 'tournament_8', playerId: 'mock_12', registeredAt: new Date(now.getTime() - 14 * 60 * 60 * 1000).toISOString() },
+
+      // Tournament 9 participants (Second Chance Showdown) - Full 8/8
+      { id: 'part_9_1', tournamentId: 'tournament_9', playerId: 'mock_1', registeredAt: new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(), seed: 1 },
+      { id: 'part_9_2', tournamentId: 'tournament_9', playerId: 'mock_2', registeredAt: new Date(now.getTime() - 5.5 * 24 * 60 * 60 * 1000).toISOString(), seed: 2 },
+      { id: 'part_9_3', tournamentId: 'tournament_9', playerId: 'mock_4', registeredAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(), seed: 3 },
+      { id: 'part_9_4', tournamentId: 'tournament_9', playerId: 'mock_6', registeredAt: new Date(now.getTime() - 4.5 * 24 * 60 * 60 * 1000).toISOString(), seed: 4 },
+      { id: 'part_9_5', tournamentId: 'tournament_9', playerId: 'mock_7', registeredAt: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString(), seed: 5 },
+      { id: 'part_9_6', tournamentId: 'tournament_9', playerId: 'mock_8', registeredAt: new Date(now.getTime() - 3.5 * 24 * 60 * 60 * 1000).toISOString(), seed: 6 },
+      { id: 'part_9_7', tournamentId: 'tournament_9', playerId: 'mock_9', registeredAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(), seed: 7 },
+      { id: 'part_9_8', tournamentId: 'tournament_9', playerId: 'mock_10', registeredAt: new Date(now.getTime() - 2.5 * 24 * 60 * 60 * 1000).toISOString(), seed: 8 }
     ];
 
     localStorage.setItem(this.PARTICIPANTS_KEY, JSON.stringify(mockParticipants));
