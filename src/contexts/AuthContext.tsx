@@ -25,6 +25,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        setIsLoading(true);
+        
+        // Use the AuthService instead of making direct Supabase calls
         const currentUser = await AuthService.getCurrentUser();
         setUser(currentUser);
         
@@ -34,6 +37,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } catch (error) {
         console.error('Failed to initialize auth:', error);
+        // Don't throw the error, just log it and continue with null user
+        setUser(null);
       } finally {
         setIsLoading(false);
       }

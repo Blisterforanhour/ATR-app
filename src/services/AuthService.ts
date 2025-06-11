@@ -33,38 +33,78 @@ export class AuthService {
   }
 
   static async getCurrentUser(): Promise<User | null> {
-    const token = localStorage.getItem(this.TOKEN_KEY);
-    if (!token) return null;
+    try {
+      const token = localStorage.getItem(this.TOKEN_KEY);
+      if (!token) return null;
 
-    const users = this.getAllUsers();
-    return users.find(user => user.email) || null;
+      const users = this.getAllUsers();
+      const currentUser = users.find(user => user.email);
+      
+      if (!currentUser) {
+        // Clear invalid token
+        localStorage.removeItem(this.TOKEN_KEY);
+        return null;
+      }
+      
+      return currentUser;
+    } catch (error) {
+      console.error('Error getting current user:', error);
+      // Clear potentially corrupted data
+      localStorage.removeItem(this.TOKEN_KEY);
+      return null;
+    }
   }
 
   static logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);
   }
 
+  static async fetchProfile(): Promise<User | null> {
+    try {
+      // This method is called by the auth store
+      // Return the current user without making external API calls
+      return this.getCurrentUser();
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      return null;
+    }
+  }
+
   private static getUserByEmail(email: string): User | null {
-    const users = this.getAllUsers();
-    return users.find(user => user.email === email) || null;
+    try {
+      const users = this.getAllUsers();
+      return users.find(user => user.email === email) || null;
+    } catch (error) {
+      console.error('Error getting user by email:', error);
+      return null;
+    }
   }
 
   private static getAllUsers(): User[] {
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Error parsing stored users:', error);
+      return [];
+    }
   }
 
   private static saveUser(user: User): void {
-    const users = this.getAllUsers();
-    const existingIndex = users.findIndex(u => u.id === user.id);
-    
-    if (existingIndex >= 0) {
-      users[existingIndex] = user;
-    } else {
-      users.push(user);
+    try {
+      const users = this.getAllUsers();
+      const existingIndex = users.findIndex(u => u.id === user.id);
+      
+      if (existingIndex >= 0) {
+        users[existingIndex] = user;
+      } else {
+        users.push(user);
+      }
+      
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(users));
+    } catch (error) {
+      console.error('Error saving user:', error);
     }
-    
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(users));
   }
 
   private static generateId(): string {
