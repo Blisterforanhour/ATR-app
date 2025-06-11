@@ -3,9 +3,20 @@ import * as Sentry from '@sentry/react';
 // Only initialize Sentry if we have a valid DSN
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 
+function isValidSentryDsn(dsn: string): boolean {
+  // Check if DSN follows the expected Sentry DSN format
+  // Valid DSN format: https://[key]@[organization].ingest.sentry.io/[project-id]
+  const sentryDsnRegex = /^https:\/\/[a-f0-9]+@[a-z0-9-]+\.ingest\.sentry\.io\/\d+$/;
+  return sentryDsnRegex.test(dsn);
+}
+
 export function initSentry() {
-  // Check if DSN is provided and valid
-  if (sentryDsn && sentryDsn.length > 10) {
+  // Check if DSN is provided, valid, and not a placeholder
+  if (sentryDsn && 
+      sentryDsn.length > 10 && 
+      !sentryDsn.includes('your_sentry_dsn') && 
+      !sentryDsn.includes('sentry.io/oauth/authorize') &&
+      isValidSentryDsn(sentryDsn)) {
     try {
       Sentry.init({
         dsn: sentryDsn,
@@ -26,7 +37,7 @@ export function initSentry() {
       console.error('Failed to initialize Sentry:', error);
     }
   } else {
-    console.log('Sentry not initialized: No valid DSN provided');
+    console.log('Sentry not initialized: No valid DSN provided or DSN is a placeholder');
   }
 }
 
